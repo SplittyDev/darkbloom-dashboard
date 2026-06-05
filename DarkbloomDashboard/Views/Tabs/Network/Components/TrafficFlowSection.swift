@@ -72,14 +72,51 @@ extension NetworkTab.TrafficFlowSection {
         private static let globeDistance: CLLocationDistance = 30_000_000
         private static let globeSpinDegreesPerSecond: CLLocationDegrees = 8
         
+        @State private var globalLatitude: CLLocationDegrees = 45
         @State private var globeLongitude: CLLocationDegrees = 0
-        @State private var position: MapCameraPosition = .camera(Self.globeCamera(centerLongitude: 0))
+        
+        @State private var position: MapCameraPosition = .camera(
+            MapCamera(
+                centerCoordinate: CLLocationCoordinate2D(latitude: 45, longitude: 0),
+                distance: Self.globeDistance,
+                heading: 0,
+                pitch: 0
+            )
+        )
         
         @State private var selection: MapLocation?
+        
+        @State private var animationTask: Task<Void, Never>?
         @State private var dashPhase: CGFloat = 0
         
         @Binding var shouldAnimate: Bool
         @Binding var mapStyle: FlowMapStyle
+        
+        private func startAnimations() {
+            animationTask?.cancel()
+            animationTask = Task {
+                var lastFrameTime = Date.now
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(33)) // 30Hz
+                    
+                    let now = Date.now
+                    let deltaTime = now.timeIntervalSince(lastFrameTime)
+                    lastFrameTime = now
+                    
+                    dashPhase += 30.0 * deltaTime
+                    
+                    guard shouldAnimate else { continue }
+                    
+                    globeLongitude = Self.normalizedLongitude(globeLongitude + Self.globeSpinDegreesPerSecond * deltaTime)
+                    position = .camera(globeCamera(centerLongitude: globeLongitude, deltaTime: deltaTime))
+                }
+            }
+        }
+        
+        private func stopAnimations() {
+            animationTask?.cancel()
+            animationTask = nil
+        }
         
         var body: some View {
             Map(position: $position, interactionModes: [.pan, .zoom], selection: $selection) {
@@ -93,6 +130,7 @@ extension NetworkTab.TrafficFlowSection {
             .frame(height: 350)
             .clipShape(.rect(cornerRadius: 8))
             .onMapCameraChange(frequency: .continuous) { context in
+                globalLatitude = context.camera.centerCoordinate.latitude
                 if !shouldAnimate {
                     globeLongitude = Self.normalizedLongitude(context.camera.centerCoordinate.longitude)
                 }
@@ -103,30 +141,41 @@ extension NetworkTab.TrafficFlowSection {
                         shouldAnimate = false
                     }
             )
-            .task {
-                var lastFrame = Date.now
-                
-                while !Task.isCancelled {
-                    try? await Task.sleep(for: .milliseconds(33))
-                    
-                    let now = Date.now
-                    let elapsed = now.timeIntervalSince(lastFrame)
-                    lastFrame = now
-                    
-                    dashPhase += 1
-                    
-                    guard shouldAnimate else { continue }
-                    
-                    globeLongitude = Self.normalizedLongitude(globeLongitude + Self.globeSpinDegreesPerSecond * elapsed)
-                    position = .camera(Self.globeCamera(centerLongitude: globeLongitude))
-                }
+            .onAppear {
+                startAnimations()
+            }
+            .onDisappear {
+                stopAnimations()
             }
         }
+
+        @inlinable
+        func moveToward(
+            from current: CLLocationDegrees,
+            to target: CLLocationDegrees,
+            deltaTime: TimeInterval,
+            speed: CLLocationDegrees
+        ) -> CLLocationDegrees {
+            let maxDelta = speed * deltaTime
+            let delta = target - current
+
+            if abs(delta) <= maxDelta {
+                return target
+            }
+
+            return current + (delta > 0 ? maxDelta : -maxDelta)
+        }
         
-        private static func globeCamera(centerLongitude: CLLocationDegrees) -> MapCamera {
-            MapCamera(
-                centerCoordinate: CLLocationCoordinate2D(latitude: 45, longitude: centerLongitude),
-                distance: globeDistance,
+        private func globeCamera(centerLongitude: CLLocationDegrees, deltaTime: TimeInterval) -> MapCamera {
+            let interpLat: CLLocationDegrees = moveToward(
+                from: globalLatitude,
+                to: 45.0,
+                deltaTime: deltaTime,
+                speed: 4.5
+            )
+            return MapCamera(
+                centerCoordinate: CLLocationCoordinate2D(latitude: interpLat, longitude: centerLongitude),
+                distance: Self.globeDistance,
                 heading: 0,
                 pitch: 0
             )
