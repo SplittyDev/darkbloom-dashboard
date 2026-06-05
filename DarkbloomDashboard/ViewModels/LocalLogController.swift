@@ -90,7 +90,13 @@ final class LocalLogController {
                 }
                 
                 self.isUpdating = false
-                try? await Task.sleep(for: .seconds(1))
+                
+                if NavigationController.shared.activeTab == .logs {
+                    try? await Task.sleep(for: .seconds(1))
+                } else {
+                    // When logs aren't being watched, there is no point in checking them every second.
+                    try? await Task.sleep(for: .seconds(15))
+                }
             }
         }
     }
