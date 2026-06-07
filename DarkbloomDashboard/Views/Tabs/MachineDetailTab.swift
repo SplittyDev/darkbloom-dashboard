@@ -130,6 +130,18 @@ extension MachineDetailTab {
         var body: some View {
             Section {
                 LabeledContent {
+                    HStack(alignment: .bottom) {
+                        ForEach(activity.models) { model in
+                            Pill {
+                                Text(model.displayName)
+                            }
+                            .controlSize(.small)
+                        }
+                    }
+                } label: {
+                    Text("Models")
+                }
+                LabeledContent {
                     Text(activity.requestsServed, format: .number)
                         .contentTransition(.numericText())
                 } label: {

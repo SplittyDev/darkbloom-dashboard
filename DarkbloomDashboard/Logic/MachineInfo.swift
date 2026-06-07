@@ -181,6 +181,7 @@ struct MachineActivityInfo: Equatable {
     let tokensGenerated: Int
     let lastChallengeVerified: String
     let failedChallenges: Int
+    let models: [DarkbloomModel]
     
     var lastChallengeDate: Date? {
         guard !lastChallengeVerified.isEmpty else { return nil }

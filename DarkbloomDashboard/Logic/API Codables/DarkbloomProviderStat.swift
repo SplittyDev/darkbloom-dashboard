@@ -4,7 +4,6 @@ struct DarkbloomProviderStat: Decodable, Equatable {
     let id: String
     let attested: Bool
     let chip: String
-    let models: [String]
     let status: DarkbloomProviderStatus
     let trustLevel: DarkbloomProviderTrustLevel
     let runtimeVerified: Bool
@@ -17,6 +16,9 @@ struct DarkbloomProviderStat: Decodable, Equatable {
     
     let requestsServed: Int
     let tokensGenerated: Int
+    
+    let models: [DarkbloomModel]
+    let currentModel: String
     
     let failedChallenges: Int
     let lastChallengeVerified: String

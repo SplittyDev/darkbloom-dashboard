@@ -180,7 +180,8 @@ final class APIDataController {
                     requestsServed: providerStats.requestsServed,
                     tokensGenerated: providerStats.tokensGenerated,
                     lastChallengeVerified: providerStats.lastChallengeVerified,
-                    failedChallenges: providerStats.failedChallenges
+                    failedChallenges: providerStats.failedChallenges,
+                    models: providerStats.models
                 )
             )
             self.machineInfo[provider.serialNumber] = machineInfo
