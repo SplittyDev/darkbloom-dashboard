@@ -41,6 +41,11 @@ final class DarkbloomClient {
         return try await fetch(url)
     }
     
+    func models() async throws -> DarkbloomModels {
+        let url = HOST.appending(path: "models")
+        return try await fetch(url)
+    }
+    
     func warmupMachine(serialNumber: String, models: [String]) async throws {
         for model in models {
             let url = HOST

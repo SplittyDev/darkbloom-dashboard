@@ -1,6 +1,6 @@
 import Foundation
 
-struct CPUCoreInfo: Decodable, Equatable {
+struct DarkbloomCPUCoreInfo: Decodable, Equatable {
     let total: Int
     let performance: Int
     let efficiency: Int

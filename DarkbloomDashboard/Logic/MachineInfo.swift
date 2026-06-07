@@ -162,7 +162,7 @@ struct TrustReductionReason: Equatable, Identifiable {
 struct MachineHardwareInfo: Equatable {
     let modelIdentifier: String
     let chipName: String
-    let cpuCores: CPUCoreInfo
+    let cpuCores: DarkbloomCPUCoreInfo
     let gpuCores: Int
     let memoryGb: Int
     let memoryBandwidthGbs: Int

@@ -8,7 +8,7 @@ struct DarkbloomProviderStat: Decodable, Equatable {
     let trustLevel: DarkbloomProviderTrustLevel
     let runtimeVerified: Bool
     
-    let cpuCores: CPUCoreInfo
+    let cpuCores: DarkbloomCPUCoreInfo
     let gpuCores: Int
     
     let memoryGb: Int

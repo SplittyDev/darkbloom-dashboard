@@ -1,4 +1,5 @@
 import Foundation
+import FiveKit
 
 struct BalanceChange: Equatable {
     let diff: Double
@@ -11,19 +12,23 @@ final class APIDataController {
     
     private var statsAndAttestationsTask: Task<Void, any Error>?
     private var balanceTask: Task<Void, any Error>?
+    private var modelsTask: Task<Void, any Error>?
     
     private(set) var stats: DarkbloomStats?
     private(set) var attestations: DarkbloomAttestations?
     private(set) var balance: DarkbloomBalance?
+    private(set) var models: [DarkbloomModelData]?
     
     private(set) var balanceChanges: [BalanceChange] = []
     private(set) var machineInfo: [String: MachineInfo] = [:]
     
     private(set) var lastStatUpdate: Date?
     private(set) var lastBalanceUpdate: Date?
+    private(set) var lastModelUpdate: Date?
     
     private(set) var isUpdatingStats: Bool = false
     private(set) var isUpdatingBalance: Bool = false
+    private(set) var isUpdatingModels: Bool = false
     
     enum CustomError: LocalizedError {
         case combinedError([any Error])
@@ -64,6 +69,19 @@ final class APIDataController {
         self.update()
     }
     
+    func updateModels() {
+        self.modelsTask?.cancel()
+        self.modelsTask = Task {
+            while !Task.isCancelled {
+                self.isUpdatingModels = true
+                try? await self.refreshModels()
+                self.lastModelUpdate = Date.now
+                self.isUpdatingModels = false
+                try await Task.sleep(for: .seconds(120))
+            }
+        }
+    }
+    
     func updateStatsAndAttestations() {
         self.statsAndAttestationsTask?.cancel()
         self.statsAndAttestationsTask = Task {
@@ -93,6 +111,7 @@ final class APIDataController {
     func update() {
         self.updateStatsAndAttestations()
         self.updateBalance()
+        self.updateModels()
     }
     
     private func refreshStatsAndAttestations() async throws {
@@ -119,6 +138,16 @@ final class APIDataController {
             throw onlyError
         } else if errors.count > 1 {
             throw CustomError.combinedError(errors)
+        }
+    }
+    
+    private func refreshModels() async throws {
+        do {
+            self.models = try await client?.models().data
+                .sorted(by: \.metadata.routableProviders, ascending: false, secondary: \.id)
+        } catch {
+            print(error)
+            throw error
         }
     }
     

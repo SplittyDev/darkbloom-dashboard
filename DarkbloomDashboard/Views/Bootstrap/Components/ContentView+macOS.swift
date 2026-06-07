@@ -19,6 +19,9 @@ struct ContentView_macOS: View {
             case .overview, .network, .machine, .machines, .loadGenerator:
                 guard let lastUpdate = dataController.lastStatUpdate else { return "" }
                 return "Last updated: \(dateFormatter.string(from: lastUpdate))"
+            case .models:
+                guard let lastUpdate = dataController.lastModelUpdate else { return "" }
+                return "Last updated: \(dateFormatter.string(from: lastUpdate))"
             case .earnings:
                 guard let lastUpdate = dataController.lastBalanceUpdate else { return "" }
                 return "Last updated: \(dateFormatter.string(from: lastUpdate))"
@@ -31,6 +34,8 @@ struct ContentView_macOS: View {
         switch tab {
             case .overview, .network, .machine, .machines, .loadGenerator:
                 dataController.updateStatsAndAttestations()
+            case .models:
+                dataController.updateModels()
             case .earnings:
                 dataController.updateBalance()
             case .logs:
@@ -42,6 +47,8 @@ struct ContentView_macOS: View {
         switch tab {
             case .overview, .network, .machine, .machines, .loadGenerator:
                 dataController.isUpdatingStats
+            case .models:
+                dataController.isUpdatingModels
             case .earnings:
                 dataController.isUpdatingBalance
             case .logs:
@@ -51,7 +58,7 @@ struct ContentView_macOS: View {
     
     private func shouldShowUpdateButton(for tab: SidebarTab) -> Bool {
         switch tab {
-            case .overview, .network, .machine, .machines, .earnings:
+            case .overview, .network, .models, .machine, .machines, .earnings:
                 true
             case .loadGenerator, .logs:
                 false
@@ -62,6 +69,7 @@ struct ContentView_macOS: View {
         NavigationSplitView {
             List(selection: $navigation.activeTab) {
                 SidebarLink(value: .overview)
+                SidebarLink(value: .models)
                 SidebarLink(value: .network)
                 SidebarLink(value: .earnings)
                 if !settings.trackedMachineSerialNumbers.isEmpty {
@@ -87,6 +95,8 @@ struct ContentView_macOS: View {
                         OverviewTab()
                     case .network:
                         NetworkTab()
+                    case .models:
+                        ModelsTab()
                     case .earnings:
                         EarningsTab()
                     case .machine(let serialNo):
