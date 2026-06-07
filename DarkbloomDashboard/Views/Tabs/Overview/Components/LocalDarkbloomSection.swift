@@ -225,7 +225,7 @@ extension OverviewTab {
                 }
             } header: {
                 HStack(alignment: .bottom) {
-                    Label("Darkbloom Process", systemImage: "server.rack")
+                    Label("Darkbloom Process", systemImage: "apple.terminal")
                     Spacer()
                     Button {
                         isRestarting = true

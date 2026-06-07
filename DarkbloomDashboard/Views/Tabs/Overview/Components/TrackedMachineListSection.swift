@@ -42,7 +42,7 @@ extension OverviewTab {
                 }
             } header: {
                 HStack(alignment: .bottom) {
-                    Label("Machines", systemImage: "macstudio.fill")
+                    Label("Fleet", systemImage: "server.rack")
                     Spacer()
                     Button {
                         showAddMachineAlert = true

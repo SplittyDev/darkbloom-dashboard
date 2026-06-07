@@ -22,9 +22,6 @@ struct ContentView_macOS: View {
             case .models:
                 guard let lastUpdate = dataController.lastModelUpdate else { return "" }
                 return "Last updated: \(dateFormatter.string(from: lastUpdate))"
-            case .earnings:
-                guard let lastUpdate = dataController.lastBalanceUpdate else { return "" }
-                return "Last updated: \(dateFormatter.string(from: lastUpdate))"
             case .logs:
                 return "Last updated: \(dateFormatter.string(from: logsViewModel.lastFetchDate))"
         }
@@ -34,10 +31,9 @@ struct ContentView_macOS: View {
         switch tab {
             case .overview, .network, .machine, .machines, .loadGenerator:
                 dataController.updateStatsAndAttestations()
+                dataController.updateBalance()
             case .models:
                 dataController.updateModels()
-            case .earnings:
-                dataController.updateBalance()
             case .logs:
                 break // not supported
         }
@@ -49,8 +45,6 @@ struct ContentView_macOS: View {
                 dataController.isUpdatingStats
             case .models:
                 dataController.isUpdatingModels
-            case .earnings:
-                dataController.isUpdatingBalance
             case .logs:
                 logsViewModel.isUpdating
         }
@@ -58,7 +52,7 @@ struct ContentView_macOS: View {
     
     private func shouldShowUpdateButton(for tab: SidebarTab) -> Bool {
         switch tab {
-            case .overview, .network, .models, .machine, .machines, .earnings:
+            case .overview, .network, .models, .machine, .machines:
                 true
             case .loadGenerator, .logs:
                 false
@@ -68,19 +62,29 @@ struct ContentView_macOS: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $navigation.activeTab) {
-                SidebarLink(value: .overview)
-                SidebarLink(value: .models)
-                SidebarLink(value: .network)
-                SidebarLink(value: .earnings)
+                Section {
+                    SidebarLink(value: .overview)
+                } header: {
+                    Text("Account")
+                }
+                
+                Section {
+                    SidebarLink(value: .network)
+                    SidebarLink(value: .models)
+                } header: {
+                    Text("Darkbloom")
+                }
+                    
                 if !settings.trackedMachineSerialNumbers.isEmpty {
                     Section {
                         ForEach(settings.trackedMachineSerialNumbers) { serialNo in
                             SidebarMachineLink(serialNo: serialNo)
                         }
                     } header: {
-                        Text("Machines")
+                        Text("Fleet")
                     }
                 }
+                
                 Section {
                     SidebarLoadTestingLink()
                     SidebarLink(value: .logs, badge: logsViewModel.unseenLogCount)
@@ -97,8 +101,6 @@ struct ContentView_macOS: View {
                         NetworkTab()
                     case .models:
                         ModelsTab()
-                    case .earnings:
-                        EarningsTab()
                     case .machine(let serialNo):
                         MachineDetailTab(serialNo: serialNo)
                     case .machines:

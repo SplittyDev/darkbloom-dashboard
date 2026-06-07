@@ -2,7 +2,8 @@ import SwiftUI
 import FiveKit
 
 struct OverviewTab: View {
-    @Environment(APIDataController.self) private var viewModel
+    @Environment(APIDataController.self) private var dataController
+    @Environment(EarningsViewModel.self) private var earningsController
     
     #if os(macOS)
     @Environment(LocalServiceController.self) private var localServiceController: LocalServiceController?
@@ -14,21 +15,15 @@ struct OverviewTab: View {
         Form {
             APIKeySection()
             
+            EarningsSection()
+            
             #if os(macOS)
             if let localServiceController, localServiceController.darkbloomExists() {
                 LocalDarkbloomSection(localServiceController: localServiceController)
             }
             #endif
             
-            if let stats = viewModel.stats {
-                NetworkOverviewSection(stats: stats)
-            }
-            
             TrackedMachineListSection()
-            
-            ForEach(settings.trackedMachineSerialNumbers) { serialNo in
-                MachineInfoSection(serialNo: serialNo, machine: viewModel.machineInfo[serialNo])
-            }
         }
         .formStyle(.grouped)
     }
