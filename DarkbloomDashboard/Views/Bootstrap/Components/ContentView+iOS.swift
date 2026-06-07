@@ -29,16 +29,6 @@ struct ContentView_iOS: View {
                 }
             }
             Tab(
-                SidebarTab.earnings.title,
-                systemImage: SidebarTab.earnings.systemImage,
-                value: .earnings
-            ) {
-                NavigationStack {
-                    EarningsTab()
-                        .navigationTitle(SidebarTab.earnings.title)
-                }
-            }
-            Tab(
                 SidebarTab.machines.title,
                 systemImage: SidebarTab.machines.systemImage,
                 value: .machines

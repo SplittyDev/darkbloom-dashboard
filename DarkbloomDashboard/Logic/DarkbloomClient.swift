@@ -20,6 +20,7 @@ final class DarkbloomClient {
     private func fetch<T>(_ url: URL) async throws -> T where T: Decodable {
         var req = URLRequest(url: url)
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        req.timeoutInterval = 10
         let (data, res) = try await URLSession.shared.data(for: req)
         guard let httpResponse = res as? HTTPURLResponse else { throw DarkbloomError.badResponse }
         guard httpResponse.statusCode == 200 else { throw DarkbloomError.badResponse }

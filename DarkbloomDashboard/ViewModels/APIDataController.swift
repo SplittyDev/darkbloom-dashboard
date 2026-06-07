@@ -66,18 +66,36 @@ final class APIDataController {
     
     func update(apiKey: String) async throws {
         self.client = DarkbloomClient(apiKey: apiKey)
-        self.update()
+        await self.update()
     }
     
     func updateModels() {
         self.modelsTask?.cancel()
         self.modelsTask = Task {
+            var isInRetry: Bool = false
+            var backoff: TimeInterval = 1
+            
             while !Task.isCancelled {
                 self.isUpdatingModels = true
-                try? await self.refreshModels()
+                
+                do {
+                    try await self.refreshModels()
+                    isInRetry = false
+                    backoff = 1
+                } catch {
+                    if isInRetry {
+                        backoff = min(60, backoff * 2)
+                    }
+                    isInRetry = true
+                    try await Task.sleep(for: .seconds(backoff))
+                    continue
+                }
+                
                 self.lastModelUpdate = Date.now
                 self.isUpdatingModels = false
-                try await Task.sleep(for: .seconds(120))
+                
+                let fuzzFactor = Double.random(in: -5..<5)
+                try await Task.sleep(for: .seconds(120 + fuzzFactor))
             }
         }
     }
@@ -85,12 +103,30 @@ final class APIDataController {
     func updateStatsAndAttestations() {
         self.statsAndAttestationsTask?.cancel()
         self.statsAndAttestationsTask = Task {
+            var isInRetry: Bool = false
+            var backoff: TimeInterval = 1
+            
             while !Task.isCancelled {
                 self.isUpdatingStats = true
-                try? await self.refreshStatsAndAttestations()
+                
+                do {
+                    try await self.refreshStatsAndAttestations()
+                    isInRetry = false
+                    backoff = 1
+                } catch {
+                    if isInRetry {
+                        backoff = min(60, backoff * 2)
+                    }
+                    isInRetry = true
+                    try await Task.sleep(for: .seconds(backoff))
+                    continue
+                }
+                
                 self.lastStatUpdate = Date.now
                 self.isUpdatingStats = false
-                try await Task.sleep(for: .seconds(60))
+                
+                let fuzzFactor = Double.random(in: -1..<1)
+                try await Task.sleep(for: .seconds(60 + fuzzFactor))
             }
         }
     }
@@ -98,19 +134,47 @@ final class APIDataController {
     func updateBalance() {
         self.balanceTask?.cancel()
         self.balanceTask = Task {
+            var isInRetry: Bool = false
+            var backoff: TimeInterval = 1
+            
             while !Task.isCancelled {
                 self.isUpdatingBalance = true
-                try? await self.refreshBalance()
+                
+                do {
+                    try await self.refreshBalance()
+                    isInRetry = false
+                    backoff = 1
+                } catch {
+                    if isInRetry {
+                        backoff = min(60, backoff * 2)
+                    }
+                    isInRetry = true
+                    try await Task.sleep(for: .seconds(backoff))
+                    continue
+                }
+                
                 self.lastBalanceUpdate = Date.now
                 self.isUpdatingBalance = false
-                try await Task.sleep(for: .seconds(60))
+                
+                let fuzzFactor = Double.random(in: -1..<1)
+                try await Task.sleep(for: .seconds(60 + fuzzFactor))
             }
         }
     }
     
-    func update() {
+    func update() async {
+        
+        // Cancel all tasks
+        self.statsAndAttestationsTask?.cancel()
+        self.balanceTask?.cancel()
+        self.modelsTask?.cancel()
+        
         self.updateStatsAndAttestations()
+        try? await Task.sleep(for: .seconds(2))
+        
         self.updateBalance()
+        try? await Task.sleep(for: .seconds(2))
+        
         self.updateModels()
     }
     
