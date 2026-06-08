@@ -5,7 +5,7 @@ struct DarkbloomProviderLocation: Decodable, Hashable {
     let scope: DarkbloomLocationScope
     let city: String
     let region: String
-    let regionCode: String
+    let regionCode: String?
     let country: String
     let countryCode: String
     let latitude: Double
@@ -14,4 +14,24 @@ struct DarkbloomProviderLocation: Decodable, Hashable {
     let hardwareAttested: Int
     let gpuCores: Int
     let memoryGb: Int
+}
+
+extension DarkbloomProviderLocation {
+    var fullDisplayName: String {
+        var components: [String?] = [
+            city,
+            region,
+            country,
+        ]
+        return components.compactMap(\.self).joined(separator: ", ")
+    }
+    
+    var compactDisplayName: String {
+        var components: [String?] = [
+            city,
+            regionCode,
+            countryCode,
+        ]
+        return components.compactMap(\.self).joined(separator: ", ")
+    }
 }

@@ -244,7 +244,7 @@ extension NetworkTab.TrafficFlowSection {
                 },
                 label: {
                     VStack(alignment: .leading) {
-                        Text("\(location.city), \(location.regionCode), \(location.countryCode)").bold()
+                        Text(location.compactDisplayName).bold()
                         Text("\(location.providers) providers")
                     }
                 }
