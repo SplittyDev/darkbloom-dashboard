@@ -24,6 +24,7 @@ This app features a wide variety of tools to make your life as a darkbloom provi
 - Warm up machines in order to get them ready to receive requests
 - Smart provider restart with automatic model warmup
 - View local darkbloom logs in real-time (macOS only)
+- Chat on the darkbloom network
 
 ## Platform Support
 
