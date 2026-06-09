@@ -8,6 +8,7 @@ struct ControllerPreviewModifier: PreviewModifier {
     private let localServiceController = LocalServiceController.shared
     private let loadTestingController = LoadTestingController.shared
     private let localLogController = LocalLogController.shared
+    private let restartController = RestartController.shared
     #endif
     
     static func makeSharedContext() async throws -> () {
@@ -21,6 +22,7 @@ struct ControllerPreviewModifier: PreviewModifier {
             .environment(localServiceController)
             .environment(loadTestingController)
             .environment(localLogController)
+            .environment(restartController)
             #endif
     }
 }

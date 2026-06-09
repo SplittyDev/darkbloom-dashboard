@@ -7,8 +7,8 @@ struct MachineRestartTarget: Codable, Equatable, Identifiable {
     var id: String { serialNumber }
 
     let serialNumber: String
-    let user: String
-    let host: String
+    var user: String
+    var host: String
 
     var sshRestartArguments: [String] {
         [

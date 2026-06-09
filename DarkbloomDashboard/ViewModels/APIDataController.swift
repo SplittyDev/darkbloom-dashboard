@@ -58,6 +58,10 @@ final class APIDataController {
         }
     }
     
+    func clearMachineInfo(for serial: String) {
+        machineInfo.removeValue(forKey: serial)
+    }
+    
     func warmup(serialNumber: String) async throws {
         guard let client else { return }
         try await client.warmupMachine(
@@ -66,9 +70,23 @@ final class APIDataController {
         )
     }
     
+    func warmup(model: DarkbloomModel, for serialNumber: String) async throws {
+        guard let client else { return }
+        try await client.warmupMachine(
+            serialNumber: serialNumber,
+            models: [model.id]
+        )
+    }
+    
     func update(apiKey: String) async throws {
         self.client = DarkbloomClient(apiKey: apiKey)
         await self.update()
+    }
+    
+    func stopAllUpdates() {
+        self.statsAndAttestationsTask?.cancel()
+        self.balanceTask?.cancel()
+        self.modelsTask?.cancel()
     }
     
     func updateModels() {
@@ -180,7 +198,7 @@ final class APIDataController {
         self.updateModels()
     }
     
-    private func refreshStatsAndAttestations() async throws {
+    func refreshStatsAndAttestations() async throws {
         var didRefreshAny: Bool = false
         var errors: [any Error] = []
         do {

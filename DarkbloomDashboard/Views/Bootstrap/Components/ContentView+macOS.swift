@@ -174,13 +174,16 @@ struct ContentView_macOS: View {
                         ModelsTab()
                     case .machine(let serialNo):
                         MachineDetailTab(serialNo: serialNo)
+                            .id(serialNo)
                     case .machines:
                         EmptyView() // not supported on macOS
                     case .chat(let chatId):
                         if let chatId {
-                            ChatDetailTab(chatId: chatId).id(chatId)
+                            ChatDetailTab(chatId: chatId)
+                                .id(chatId)
                         } else {
                             ChatDetailTab()
+                                .id(UUID())
                         }
                     case .chats:
                         EmptyView() // not supported on macOS

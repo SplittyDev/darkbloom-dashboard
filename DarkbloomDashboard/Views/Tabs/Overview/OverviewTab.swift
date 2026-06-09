@@ -18,6 +18,7 @@ struct OverviewTab: View {
             EarningsSection()
             
             #if os(macOS)
+            // TODO: This only shows up if darkbloom exists locally, but the fleet restart button is in this section.
             if let localServiceController, localServiceController.darkbloomExists() {
                 LocalDarkbloomSection(localServiceController: localServiceController)
             }

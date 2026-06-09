@@ -9,6 +9,7 @@ struct ContentView: View {
     private let localServiceController = LocalServiceController.shared
     private let loadTestingController = LoadTestingController.shared
     private let localLogController = LocalLogController.shared
+    private let restartController = RestartController.shared
     #endif
     
     private let settings = Settings.shared
@@ -20,6 +21,7 @@ struct ContentView: View {
                 .environment(localServiceController)
                 .environment(loadTestingController)
                 .environment(localLogController)
+                .environment(restartController)
             #elseif os(iOS)
             ContentView_iOS()
             #else
