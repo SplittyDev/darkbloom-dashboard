@@ -11,6 +11,10 @@ struct ContentView_macOS: View {
     @Query(sort: \ChatModel.updatedAt, order: .reverse) private var chats: [ChatModel]
     
     @Bindable private var navigation = NavigationController.shared
+    
+    @State private var showAddMachineAlert: Bool = false
+    @State private var newMachineSerialNumber: String = ""
+    
     private let settings = Settings.shared
     
     private func subtitle(for tab: SidebarTab) -> String {
@@ -66,52 +70,98 @@ struct ContentView_macOS: View {
         }
     }
     
+    @ViewBuilder private var accountSection: some View {
+        Section {
+            SidebarLink(value: .overview)
+        } header: {
+            Text("Account")
+        }
+    }
+    
+    @ViewBuilder private var fleetSection: some View {
+        Section {
+            if settings.trackedMachineSerialNumbers.isEmpty {
+                Text("No machines tracked.")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(settings.trackedMachineSerialNumbers) { serialNo in
+                SidebarMachineLink(serialNo: serialNo)
+            }
+        } header: {
+            HStack {
+                Text("Fleet")
+                Spacer()
+                Button {
+                    showAddMachineAlert = true
+                } label: {
+                    Text(Image(systemName: "plus"))
+                }
+                .buttonStyle(.accessoryBar)
+                .buttonBorderShape(.circle)
+                .padding(.trailing, 10)
+                .alert("Add Machine", isPresented: $showAddMachineAlert) {
+                    TextField("Serial Number", text: $newMachineSerialNumber)
+                    
+                    Button("Save") {
+                        settings.trackedMachineSerialNumbers.append(newMachineSerialNumber)
+                        newMachineSerialNumber = ""
+                    }
+                    
+                    CancelButton {
+                        newMachineSerialNumber = ""
+                    }
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder private var darkbloomSection: some View {
+        Section {
+            SidebarLink(value: .network)
+            SidebarLink(value: .models)
+        } header: {
+            Text("Darkbloom")
+        }
+    }
+    
+    @ViewBuilder private var utilitySection: some View {
+        Section {
+            SidebarLoadTestingLink()
+            SidebarLink(value: .logs, badge: logsViewModel.unseenLogCount)
+        } header: {
+            Text("Utilities")
+        }
+    }
+    
+    @ViewBuilder private var chatSection: some View {
+        Section {
+            ForEach(chats) { chat in
+                SidebarChatLink(chat: chat)
+            }
+        } header: {
+            HStack {
+                Text("Chats")
+                Spacer()
+                Button {
+                    navigation.activeTab = .chat(nil)
+                } label: {
+                    Text(Image(systemName: "square.and.pencil"))
+                }
+                .buttonStyle(.accessoryBar)
+                .buttonBorderShape(.circle)
+                .padding(.trailing, 10)
+            }
+        }
+    }
+    
     var body: some View {
         NavigationSplitView {
             List(selection: $navigation.activeTab) {
-                Section {
-                    SidebarLink(value: .overview)
-                } header: {
-                    Text("Account")
-                }
-                
-                Section {
-                    SidebarLink(value: .network)
-                    SidebarLink(value: .models)
-                } header: {
-                    Text("Darkbloom")
-                }
-                    
-                if !settings.trackedMachineSerialNumbers.isEmpty {
-                    Section {
-                        ForEach(settings.trackedMachineSerialNumbers) { serialNo in
-                            SidebarMachineLink(serialNo: serialNo)
-                        }
-                    } header: {
-                        Text("Fleet")
-                    }
-                }
-                
-                Section {
-                    SidebarLoadTestingLink()
-                    SidebarLink(value: .logs, badge: logsViewModel.unseenLogCount)
-                } header: {
-                    Text("Utilities")
-                }
-                
-                Section {
-                    ForEach(chats) { chat in
-                        SidebarChatLink(chat: chat)
-                    }
-                    Button {
-                        navigation.activeTab = .chat(nil)
-                    } label: {
-                        Label("New Chat", systemImage: "square.and.pencil")
-                            .frame(maxWidth: .infinity)
-                    }
-                } header: {
-                    Text("Chats")
-                }
+                accountSection
+                fleetSection
+                darkbloomSection
+                utilitySection
+                chatSection
             }
         } detail: {
             Group {
