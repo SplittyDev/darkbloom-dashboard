@@ -7,8 +7,12 @@ struct ProjectedEarnings: Equatable {
 }
 
 @MainActor @Observable
-final class EarningsViewModel {
+final class EarningsController {
+    static let shared = EarningsController()
+    
     private(set) var projectedEarnings: ProjectedEarnings?
+    
+    private init() {}
     
     @concurrent func calculateProjections(basedOn changes: [BalanceChange]) async {
         let sortedChanges = changes.sorted { $0.date < $1.date }

@@ -124,9 +124,8 @@ struct LogEntryView: View {
     }
 }
 
-#Preview {
+#Preview(traits: .controllers) {
     LogsTab()
-        .environment(LocalLogController())
 }
 
 #endif

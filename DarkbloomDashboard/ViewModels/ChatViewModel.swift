@@ -74,7 +74,7 @@ final class ChatViewModel {
     
     // MARK: - Public API
     
-    func generateTitle(dataController: APIDataController) async {
+    func generateTitle() async {
         guard chat.title == nil, let text = chat.messages.first?.content else { return }
         
         let systemMessage = """
@@ -97,7 +97,7 @@ final class ChatViewModel {
             let fleet = Settings.shared.trackedMachineSerialNumbers
             var availableFleet: [String] = []
             for serialNo in fleet {
-                guard let machineInfo = dataController.machineInfo[serialNo] else { continue }
+                guard let machineInfo = APIDataController.shared.machineInfo[serialNo] else { continue }
                 if machineInfo.trust.isTrusted && machineInfo.activity.models.contains(model) {
                     availableFleet.append(serialNo)
                 }

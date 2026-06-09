@@ -19,8 +19,7 @@ struct NetworkTab: View {
     }
 }
 
-#Preview {
+#Preview(traits: .controllers) {
     NetworkTab()
-        .environment(APIDataController())
         .frame(minHeight: 600)
 }

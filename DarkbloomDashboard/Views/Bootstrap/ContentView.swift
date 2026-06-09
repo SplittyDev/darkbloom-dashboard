@@ -2,13 +2,13 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @State private var dataController = APIDataController()
-    @State private var earningsController = EarningsViewModel()
+    private let dataController = APIDataController.shared
+    private let earningsController = EarningsController.shared
     
     #if os(macOS)
-    @State private var loadTestingController = LoadTestingController()
-    @State private var localServiceController = LocalServiceController()
-    @State private var localLogController = LocalLogController()
+    private let localServiceController = LocalServiceController.shared
+    private let loadTestingController = LoadTestingController.shared
+    private let localLogController = LocalLogController.shared
     #endif
     
     private let settings = Settings.shared

@@ -2,13 +2,13 @@ import SwiftUI
 import FiveKit
 
 struct MachineDetailTab: View {
-    @Environment(APIDataController.self) private var viewModel
+    private let dataController = APIDataController.shared
     
     let serialNo: String
     
     var body: some View {
         Form {
-            if let machine = viewModel.machineInfo[serialNo] {
+            if let machine = dataController.machineInfo[serialNo] {
                 Section {
                     LabeledContent {
                         Text(machine.providerId)
@@ -175,7 +175,6 @@ extension MachineDetailTab {
     }
 }
 
-#Preview {
+#Preview(traits: .controllers) {
     MachineDetailTab(serialNo: "NJD6MGW279")
-        .environment(APIDataController())
 }

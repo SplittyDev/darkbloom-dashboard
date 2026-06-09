@@ -29,6 +29,8 @@ struct DarkbloomLogEntry: Equatable, Identifiable {
 
 @MainActor @Observable
 final class LocalLogController {
+    static let shared = LocalLogController()
+    
     private let subsystem = "dev.darkbloom.provider"
     private let maxLogEntries: Int = 2_000
     
@@ -41,7 +43,7 @@ final class LocalLogController {
     
     var unseenLogCount: Int = 0
     
-    init() {}
+    private init() {}
     
     func startStreaming() {
         streamTask?.cancel()

@@ -135,9 +135,8 @@ struct LoadGeneratorTab: View {
     }
 }
 
-#Preview {
+#Preview(traits: .controllers) {
     LoadGeneratorTab()
-        .environment(LoadTestingController())
 }
 
 #endif

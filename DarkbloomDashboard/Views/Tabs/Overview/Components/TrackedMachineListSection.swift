@@ -67,10 +67,9 @@ extension OverviewTab {
     }
 }
 
-#Preview {
+#Preview(traits: .controllers) {
     Form {
         OverviewTab.TrackedMachineListSection()
-            .environment(APIDataController())
     }
     .formStyle(.grouped)
 }

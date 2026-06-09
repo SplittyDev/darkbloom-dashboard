@@ -44,7 +44,7 @@ extension OverviewTab {
     }
 }
 
-#Preview {
+#Preview(traits: .controllers) {
     Form {
         OverviewTab.APIKeySection()
     }

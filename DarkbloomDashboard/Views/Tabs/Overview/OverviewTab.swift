@@ -3,7 +3,7 @@ import FiveKit
 
 struct OverviewTab: View {
     @Environment(APIDataController.self) private var dataController
-    @Environment(EarningsViewModel.self) private var earningsController
+    @Environment(EarningsController.self) private var earningsController
     
     #if os(macOS)
     @Environment(LocalServiceController.self) private var localServiceController: LocalServiceController?
@@ -29,13 +29,6 @@ struct OverviewTab: View {
     }
 }
 
-#Preview {
-    #if os(macOS)
+#Preview(traits: .controllers) {
     OverviewTab()
-        .environment(APIDataController())
-        .environment(LocalServiceController())
-    #else
-    OverviewTab()
-        .environment(APIDataController())
-    #endif
 }

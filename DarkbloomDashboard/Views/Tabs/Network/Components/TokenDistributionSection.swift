@@ -37,14 +37,13 @@ extension NetworkTab {
     }
 }
 
-#Preview {
-    @Previewable @State var viewModel = APIDataController()
+#Preview(traits: .controllers) {
+    @Previewable @Environment(APIDataController.self) var dataController
     
     Form {
-        if let stats = viewModel.stats {
+        if let stats = dataController.stats {
             NetworkTab.TokenDistributionSection(stats: stats)
         }
     }
     .formStyle(.grouped)
-    .environment(viewModel)
 }

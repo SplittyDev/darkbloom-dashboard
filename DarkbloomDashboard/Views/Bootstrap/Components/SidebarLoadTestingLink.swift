@@ -23,10 +23,9 @@ struct SidebarLoadTestingLink: View {
     }
 }
 
-#Preview {
+#Preview(traits: .controllers) {
     List {
         SidebarLoadTestingLink()
-            .environment(LoadTestingController())
     }
     .listStyle(.sidebar)
 }

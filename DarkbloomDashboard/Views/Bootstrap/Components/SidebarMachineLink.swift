@@ -66,10 +66,9 @@ struct SidebarMachineLink: View {
     }
 }
 
-#Preview {
+#Preview(traits: .controllers) {
     List {
         SidebarMachineLink(serialNo: "NJD6MGW279")
-            .environment(APIDataController())
     }
     .listStyle(.sidebar)
 }

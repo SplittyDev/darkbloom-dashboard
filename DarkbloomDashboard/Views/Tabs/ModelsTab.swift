@@ -84,7 +84,6 @@ struct ModelsTab: View {
     }
 }
 
-#Preview {
+#Preview(traits: .controllers) {
     ModelsTab()
-        .environment(APIDataController())
 }

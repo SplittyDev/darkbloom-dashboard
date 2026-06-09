@@ -3,7 +3,7 @@ import SwiftUI
 extension OverviewTab {
     struct EarningsSection: View {
         @Environment(APIDataController.self) private var dataController
-        @Environment(EarningsViewModel.self) private var earningsController
+        @Environment(EarningsController.self) private var earningsController
         
         var body: some View {
             Section {
@@ -40,11 +40,9 @@ extension OverviewTab {
     }
 }
 
-#Preview {
+#Preview(traits: .controllers) {
     Form {
         OverviewTab.EarningsSection()
-            .environment(APIDataController())
-            .environment(EarningsViewModel())
     }
     .formStyle(.grouped)
 }

@@ -53,9 +53,8 @@ struct ContentView_iOS: View {
     }
 }
 
-#Preview {
+#Preview(traits: .controllers) {
     ContentView_iOS()
-        .environment(APIDataController())
 }
 
 #endif

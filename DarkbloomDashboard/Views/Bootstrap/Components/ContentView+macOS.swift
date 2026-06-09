@@ -216,10 +216,8 @@ struct ContentView_macOS: View {
     }
 }
 
-#Preview {
+#Preview(traits: .controllers) {
     ContentView_macOS()
-        .environment(APIDataController())
-        .environment(LocalLogController())
 }
 
 #endif

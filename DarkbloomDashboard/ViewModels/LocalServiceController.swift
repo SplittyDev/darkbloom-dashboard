@@ -23,6 +23,8 @@ struct MachineRestartTarget: Codable, Equatable, Identifiable {
 
 @MainActor @Observable
 final class LocalServiceController {
+    static let shared = LocalServiceController()
+    
     private var launchctlTask: Task<Void, Never>?
     
     private(set) var processExists: Bool = false
@@ -30,7 +32,7 @@ final class LocalServiceController {
     
     private(set) var currentMachineSerialNumber: String?
     
-    init() {
+    private init() {
     }
     
     func setup() {

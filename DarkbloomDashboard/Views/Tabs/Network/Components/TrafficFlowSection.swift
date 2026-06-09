@@ -364,14 +364,13 @@ extension NetworkTab.TrafficFlowSection {
     }
 }
 
-#Preview {
-    @Previewable @State var viewModel = APIDataController()
+#Preview(traits: .controllers) {
+    @Previewable @Environment(APIDataController.self) var dataController
     
     Form {
-        if let stats = viewModel.stats {
+        if let stats = dataController.stats {
             NetworkTab.TrafficFlowSection(stats: stats)
         }
     }
     .formStyle(.grouped)
-    .environment(viewModel)
 }

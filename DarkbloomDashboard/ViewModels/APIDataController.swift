@@ -8,6 +8,8 @@ struct BalanceChange: Equatable {
 
 @MainActor @Observable
 final class APIDataController {
+    static let shared = APIDataController()
+    
     private var client: DarkbloomClient?
     
     private var statsAndAttestationsTask: Task<Void, any Error>?
@@ -48,7 +50,7 @@ final class APIDataController {
         }
     }
     
-    init() {
+    private init() {
         if let apiKey = Settings.shared.apiKey {
             Task {
                 try? await self.update(apiKey: apiKey)

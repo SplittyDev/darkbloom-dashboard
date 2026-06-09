@@ -21,9 +21,8 @@ struct MachineListTab: View {
     }
 }
 
-#Preview {
+#Preview(traits: .controllers) {
     NavigationStack {
         MachineListTab()
     }
-    .environment(APIDataController())
 }

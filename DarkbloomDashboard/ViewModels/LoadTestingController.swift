@@ -5,6 +5,8 @@ import OpenAI
 
 @MainActor @Observable
 final class LoadTestingController {
+    static let shared = LoadTestingController()
+    
     private let requestsPerApiKeyPerWave = 2
     
     private(set) var inProgress: Bool = false
@@ -16,7 +18,7 @@ final class LoadTestingController {
     var requestsToSend: Int = 20
     var responses: [ChatResult] = []
     
-    init() {}
+    private init() {}
     
     func run(apiKeys: [String], payload: String, maxConcurrency: Int, minDelay: Int) async throws {
         guard !inProgress else { return }

@@ -135,7 +135,6 @@ extension ChatDetailTab {
         )
     }
     .environment(ChatViewModel.get())
-    .environment(APIDataController())
 }
 
 #endif

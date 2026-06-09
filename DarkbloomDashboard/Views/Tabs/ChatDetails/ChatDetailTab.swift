@@ -3,8 +3,6 @@ import SwiftData
 import FiveKit
 
 struct ChatDetailTab: View {
-    @Environment(APIDataController.self) private var dataController
-    
     @State private var viewModel: ChatViewModel
     
     init() {
@@ -38,7 +36,7 @@ struct ChatDetailTab: View {
         .environment(viewModel)
         .task {
             guard viewModel.chatModelIsInserted else { return }
-            await viewModel.generateTitle(dataController: dataController)
+            await viewModel.generateTitle()
         }
         .onDisappear {
             viewModel.savePendingChanges()
@@ -46,7 +44,7 @@ struct ChatDetailTab: View {
     }
 }
 
-#Preview {
+#Preview(traits: .sampleData, .controllers) {
     let chat: ChatModel = {
         let container = SwiftDataUtils.activeModelContainer
         let context = ModelContext(container)
@@ -63,7 +61,6 @@ struct ChatDetailTab: View {
     }()
     
     ChatDetailTab(chatId: chat.persistentModelID)
-        .environment(APIDataController())
         .modelContainer(SwiftDataUtils.activeModelContainer)
         .scenePadding()
 }
