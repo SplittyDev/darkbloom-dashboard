@@ -8,11 +8,11 @@ struct ChatDetailTab: View {
     @State private var viewModel: ChatViewModel
     
     init() {
-        self._viewModel = State(wrappedValue: ChatViewModel())
+        viewModel = ChatViewModel.get()
     }
     
     init(chatId: PersistentIdentifier) {
-        self._viewModel = State(wrappedValue: ChatViewModel(chatId: chatId))
+        viewModel = ChatViewModel.get(chatId: chatId)
     }
     
     var body: some View {

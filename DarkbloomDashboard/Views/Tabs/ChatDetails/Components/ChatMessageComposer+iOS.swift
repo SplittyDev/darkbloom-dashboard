@@ -47,7 +47,7 @@ extension ChatDetailTab {
                         }
                     }
                 }
-                .disabled(viewModel.inProgress)
+                .disabled(!canSend || viewModel.inProgress)
             }
             .padding(.vertical, 6)
             .padding(.horizontal, 8)

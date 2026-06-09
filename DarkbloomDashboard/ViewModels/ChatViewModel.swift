@@ -1,9 +1,27 @@
 import Foundation
 import SwiftData
 import OpenAI
+import FiveKit
 
 @MainActor @Observable
 final class ChatViewModel {
+    
+    // MARK: - Instance Cache
+    
+    /// Cache view models to be reused for the same chat.
+    private static var cache: [PersistentIdentifier: ChatViewModel] = [:]
+    
+    static func get(chatId: PersistentIdentifier? = nil) -> ChatViewModel {
+        if let chatId {
+            return cache.get(chatId, elseInsert: ChatViewModel(chatId: chatId))
+        } else {
+            let model = ChatModel()
+            return cache.get(model.persistentModelID, elseInsert: ChatViewModel(uninsertedModel: model))
+        }
+    }
+    
+    // MARK: - Fields
+    
     let context: ModelContext
     var chat: ChatModel
     
@@ -12,18 +30,33 @@ final class ChatViewModel {
     
     private var isInserted: Bool
     
+    // MARK: - Properties
+    
     var chatModelIsInserted: Bool {
         isInserted
     }
     
-    init() {
+    private var client: OpenAI {
+        let config = OpenAI.Configuration(
+            token: Settings.shared.apiKey,
+            host: "api.darkbloom.dev",
+            scheme: "https",
+            basePath: "/v1",
+            parsingOptions: .relaxed
+        )
+        return OpenAI(configuration: config)
+    }
+    
+    // MARK: - Initializers
+    
+    private init(uninsertedModel: ChatModel) {
         let context = SwiftDataUtils.backgroundContext
         self.context = context
-        self.chat = ChatModel()
+        self.chat = uninsertedModel
         self.isInserted = false
     }
     
-    init(chatId: PersistentIdentifier) {
+    private init(chatId: PersistentIdentifier) {
         let context = SwiftDataUtils.backgroundContext
         self.context = context
         
@@ -37,21 +70,9 @@ final class ChatViewModel {
         } else {
             fatalError("Chat model with id '\(chatId)' not found in context!")
         }
-        
-        // Set routing
-        
     }
     
-    private var client: OpenAI {
-        let config = OpenAI.Configuration(
-            token: Settings.shared.apiKey,
-            host: "api.darkbloom.dev",
-            scheme: "https",
-            basePath: "/v1",
-            parsingOptions: .relaxed
-        )
-        return OpenAI(configuration: config)
-    }
+    // MARK: - Public API
     
     func generateTitle(dataController: APIDataController) async {
         guard chat.title == nil, let text = chat.messages.first?.content else { return }

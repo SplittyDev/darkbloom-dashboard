@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/FiveSheepCo/FoundationPlus.git",
       "state" : {
-        "revision" : "108c3b4218a02bf0d30f6e515d7feeee37513787",
-        "version" : "1.0.6"
+        "revision" : "822052178057495c6328e534cf6098d0c767c8e4",
+        "version" : "1.0.7"
       }
     },
     {

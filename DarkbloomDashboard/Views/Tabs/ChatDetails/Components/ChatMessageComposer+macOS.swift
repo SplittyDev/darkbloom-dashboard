@@ -55,7 +55,7 @@ extension ChatDetailTab {
                             }
                         }
                     }
-                    .disabled(viewModel.inProgress)
+                    .disabled(!canSend || viewModel.inProgress)
                 }
             }
             .padding(.vertical, 12)
@@ -134,7 +134,7 @@ extension ChatDetailTab {
             sendMessage: {}
         )
     }
-    .environment(ChatViewModel())
+    .environment(ChatViewModel.get())
     .environment(APIDataController())
 }
 
