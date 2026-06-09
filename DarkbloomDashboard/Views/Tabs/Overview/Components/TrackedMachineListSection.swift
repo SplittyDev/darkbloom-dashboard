@@ -25,14 +25,8 @@ extension OverviewTab {
                         }
                         .contentShape(.rect)
                         .contextMenu {
-                            if #available(iOS 26, macOS 26, *) {
-                                Button(role: .destructive) {
-                                    settings.trackedMachineSerialNumbers.removeAll(subject: serialNo)
-                                }
-                            } else {
-                                Button("Delete", role: .destructive) {
-                                    settings.trackedMachineSerialNumbers.removeAll(subject: serialNo)
-                                }
+                            DeleteButton {
+                                settings.trackedMachineSerialNumbers.removeAll(subject: serialNo)
                             }
                         }
                     }

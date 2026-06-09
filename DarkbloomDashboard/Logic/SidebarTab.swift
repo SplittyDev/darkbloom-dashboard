@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 enum SidebarTab: Hashable, Identifiable {
     case overview
@@ -6,6 +7,8 @@ enum SidebarTab: Hashable, Identifiable {
     case models
     case machine(String)
     case machines
+    case chat(PersistentIdentifier?)
+    case chats
     case loadGenerator
     case logs
 
@@ -16,6 +19,8 @@ enum SidebarTab: Hashable, Identifiable {
             case .models: "models"
             case .machine(let id): "machine-\(id)"
             case .machines: "machines"
+            case .chat(let id): if let id { "chat-\(id)" } else { "new-chat" }
+            case .chats: "chats"
             case .loadGenerator: "load-generator"
             case .logs: "logs"
         }
@@ -28,6 +33,8 @@ enum SidebarTab: Hashable, Identifiable {
             case .models: "Models"
             case .machine(let id): id
             case .machines: "Fleet"
+            case .chat: "Chat"
+            case .chats: "Chats"
             case .loadGenerator: "Load Generator"
             case .logs: "Log Viewer"
         }
@@ -40,6 +47,8 @@ enum SidebarTab: Hashable, Identifiable {
             case .models: "list.dash"
             case .machine: "macstudio"
             case .machines: "macstudio"
+            case .chat: "text.bubble"
+            case .chats: "bubble.left.and.bubble.right"
             case .loadGenerator: "bolt.fill"
             case .logs: "text.page"
         }

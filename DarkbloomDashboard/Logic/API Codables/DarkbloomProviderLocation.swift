@@ -18,7 +18,7 @@ struct DarkbloomProviderLocation: Decodable, Hashable {
 
 extension DarkbloomProviderLocation {
     var fullDisplayName: String {
-        var components: [String?] = [
+        let components: [String?] = [
             city,
             region,
             country,
@@ -27,7 +27,7 @@ extension DarkbloomProviderLocation {
     }
     
     var compactDisplayName: String {
-        var components: [String?] = [
+        let components: [String?] = [
             city,
             regionCode,
             countryCode,

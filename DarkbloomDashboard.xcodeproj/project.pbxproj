@@ -7,7 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		CA2B9C552FCBD4E300B5C850 /* OpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = CA2B9C542FCBD4E300B5C850 /* OpenAI */; };
+		CA6C3EB22FD8350D0090FE69 /* OpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = CA6C3EB12FD8350D0090FE69 /* OpenAI */; };
+		CA8C3BE22FD76A5800DA9C92 /* MarkdownView in Frameworks */ = {isa = PBXBuildFile; productRef = CA8C3BE12FD76A5800DA9C92 /* MarkdownView */; };
 		CAA2A1BB2FCAD6E2006DAECF /* FiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = CAA2A1BA2FCAD6E2006DAECF /* FiveKit */; };
 /* End PBXBuildFile section */
 
@@ -57,8 +58,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CA2B9C552FCBD4E300B5C850 /* OpenAI in Frameworks */,
 				CAA2A1BB2FCAD6E2006DAECF /* FiveKit in Frameworks */,
+				CA6C3EB22FD8350D0090FE69 /* OpenAI in Frameworks */,
+				CA8C3BE22FD76A5800DA9C92 /* MarkdownView in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -120,7 +122,8 @@
 			name = DarkbloomDashboard;
 			packageProductDependencies = (
 				CAA2A1BA2FCAD6E2006DAECF /* FiveKit */,
-				CA2B9C542FCBD4E300B5C850 /* OpenAI */,
+				CA8C3BE12FD76A5800DA9C92 /* MarkdownView */,
+				CA6C3EB12FD8350D0090FE69 /* OpenAI */,
 			);
 			productName = "Darkbloom Dashboard";
 			productReference = CAD713372FCAD54E0072280F /* DarkbloomDashboard.app */;
@@ -206,7 +209,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				CAA2A1B92FCAD6E2006DAECF /* XCRemoteSwiftPackageReference "FiveKit" */,
-				CA2B9C532FCBD4E300B5C850 /* XCRemoteSwiftPackageReference "OpenAI" */,
+				CA8C3BE02FD76A5800DA9C92 /* XCRemoteSwiftPackageReference "MarkdownView" */,
+				CA6C3EB02FD8350D0090FE69 /* XCRemoteSwiftPackageReference "OpenAI-OpenRouter" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = CAD713382FCAD54E0072280F /* Products */;
@@ -644,12 +648,20 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		CA2B9C532FCBD4E300B5C850 /* XCRemoteSwiftPackageReference "OpenAI" */ = {
+		CA6C3EB02FD8350D0090FE69 /* XCRemoteSwiftPackageReference "OpenAI-OpenRouter" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/MacPaw/OpenAI.git";
+			repositoryURL = "https://github.com/FiveSheepCo/OpenAI-OpenRouter.git";
+			requirement = {
+				branch = "darkbloom/custom-body";
+				kind = branch;
+			};
+		};
+		CA8C3BE02FD76A5800DA9C92 /* XCRemoteSwiftPackageReference "MarkdownView" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/LiYanan2004/MarkdownView.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.4.9;
+				minimumVersion = 2.7.0;
 			};
 		};
 		CAA2A1B92FCAD6E2006DAECF /* XCRemoteSwiftPackageReference "FiveKit" */ = {
@@ -663,10 +675,15 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		CA2B9C542FCBD4E300B5C850 /* OpenAI */ = {
+		CA6C3EB12FD8350D0090FE69 /* OpenAI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = CA2B9C532FCBD4E300B5C850 /* XCRemoteSwiftPackageReference "OpenAI" */;
+			package = CA6C3EB02FD8350D0090FE69 /* XCRemoteSwiftPackageReference "OpenAI-OpenRouter" */;
 			productName = OpenAI;
+		};
+		CA8C3BE12FD76A5800DA9C92 /* MarkdownView */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CA8C3BE02FD76A5800DA9C92 /* XCRemoteSwiftPackageReference "MarkdownView" */;
+			productName = MarkdownView;
 		};
 		CAA2A1BA2FCAD6E2006DAECF /* FiveKit */ = {
 			isa = XCSwiftPackageProductDependency;

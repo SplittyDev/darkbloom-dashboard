@@ -31,14 +31,8 @@ struct LoadGeneratorTab: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(.rect)
                         .contextMenu {
-                            if #available(iOS 26, macOS 26, *) {
-                                Button(role: .destructive) {
-                                    settings.loadTestingApiKeys.removeAll(subject: apiKey)
-                                }
-                            } else {
-                                Button("Delete", role: .destructive) {
-                                    settings.loadTestingApiKeys.removeAll(subject: apiKey)
-                                }
+                            DeleteButton {
+                                settings.loadTestingApiKeys.removeAll(subject: apiKey)
                             }
                         }
                 }

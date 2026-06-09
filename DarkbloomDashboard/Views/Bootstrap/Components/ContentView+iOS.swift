@@ -38,6 +38,16 @@ struct ContentView_iOS: View {
                         .navigationTitle(SidebarTab.machines.title)
                 }
             }
+            Tab(
+                SidebarTab.chats.title,
+                systemImage: SidebarTab.chats.systemImage,
+                value: .chats
+            ) {
+                NavigationStack {
+                    ChatListTab()
+                        .navigationTitle(SidebarTab.chats.title)
+                }
+            }
         }
         .tabViewStyle(.sidebarAdaptable)
     }

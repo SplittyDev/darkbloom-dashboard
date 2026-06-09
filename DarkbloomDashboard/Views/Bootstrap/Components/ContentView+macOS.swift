@@ -1,11 +1,14 @@
 #if os(macOS)
 
 import SwiftUI
+import SwiftData
 
 struct ContentView_macOS: View {
     @Environment(APIDataController.self) private var dataController
     @Environment(LocalLogController.self) private var logsViewModel
     @Environment(LocalServiceController.self) private var localServiceController
+    
+    @Query(sort: \ChatModel.updatedAt, order: .reverse) private var chats: [ChatModel]
     
     @Bindable private var navigation = NavigationController.shared
     private let settings = Settings.shared
@@ -24,6 +27,8 @@ struct ContentView_macOS: View {
                 return "Last updated: \(dateFormatter.string(from: lastUpdate))"
             case .logs:
                 return "Last updated: \(dateFormatter.string(from: logsViewModel.lastFetchDate))"
+            case .chat, .chats:
+                return ""
         }
     }
     
@@ -34,7 +39,7 @@ struct ContentView_macOS: View {
                 dataController.updateBalance()
             case .models:
                 dataController.updateModels()
-            case .logs:
+            case .logs, .chat, .chats:
                 break // not supported
         }
     }
@@ -47,6 +52,8 @@ struct ContentView_macOS: View {
                 dataController.isUpdatingModels
             case .logs:
                 logsViewModel.isUpdating
+            case .chat, .chats:
+                false
         }
     }
     
@@ -54,7 +61,7 @@ struct ContentView_macOS: View {
         switch tab {
             case .overview, .network, .models, .machine, .machines:
                 true
-            case .loadGenerator, .logs:
+            case .loadGenerator, .logs, .chat, .chats:
                 false
         }
     }
@@ -91,6 +98,20 @@ struct ContentView_macOS: View {
                 } header: {
                     Text("Utilities")
                 }
+                
+                Section {
+                    ForEach(chats) { chat in
+                        SidebarChatLink(chat: chat)
+                    }
+                    Button {
+                        navigation.activeTab = .chat(nil)
+                    } label: {
+                        Label("New Chat", systemImage: "square.and.pencil")
+                            .frame(maxWidth: .infinity)
+                    }
+                } header: {
+                    Text("Chats")
+                }
             }
         } detail: {
             Group {
@@ -104,6 +125,14 @@ struct ContentView_macOS: View {
                     case .machine(let serialNo):
                         MachineDetailTab(serialNo: serialNo)
                     case .machines:
+                        EmptyView() // not supported on macOS
+                    case .chat(let chatId):
+                        if let chatId {
+                            ChatDetailTab(chatId: chatId).id(chatId)
+                        } else {
+                            ChatDetailTab()
+                        }
+                    case .chats:
                         EmptyView() // not supported on macOS
                     case .loadGenerator:
                         LoadGeneratorTab()
