@@ -156,7 +156,9 @@ final class ChatViewModel {
         }
         
         do {
+            var reasoningContent = ""
             var streamingContent = ""
+            
             self.streamingMessage = streamingMessage
             
             let query = ChatQuery(
@@ -167,6 +169,10 @@ final class ChatViewModel {
             
             for try await chunk in client.chatsStream(query: query) {
                 let delta = chunk.choices[0].delta
+                if let content = delta.reasoning {
+                    reasoningContent += content
+                    streamingMessage.reasoning = reasoningContent
+                }
                 if let content = delta.content {
                     streamingContent += content
                     streamingMessage.content = streamingContent

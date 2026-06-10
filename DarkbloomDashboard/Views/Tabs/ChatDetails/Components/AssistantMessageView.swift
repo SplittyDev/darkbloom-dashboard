@@ -19,12 +19,28 @@ extension ChatDetailTab {
         
         var body: some View {
             VStack(alignment: .leading) {
-                if message.content.isEmpty {
-                    ProgressView().controlSize(.small)
-                } else {
-                    MarkdownView(content)
-                        .fixedSize(horizontal: false, vertical: true)
+                Group {
+                    if message.content.isEmpty {
+                        Group {
+                            if message.reasoning == nil || message.reasoning?.isEmpty == true {
+                                HStack {
+                                    ProgressView().controlSize(.small)
+                                    Text("Connecting...")
+                                }
+                            } else {
+                                HStack {
+                                    ProgressView().controlSize(.small)
+                                    Text("Thinking...")
+                                }
+                            }
+                        }
+                        .transition(.blurReplace)
+                    } else {
+                        MarkdownView(content)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
+                .transition(.opacity)
                 
                 HStack {
                     if let usage = message.usage {
@@ -39,6 +55,7 @@ extension ChatDetailTab {
                 length * 0.9
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .animation(.interactiveSpring, value: message.reasoning)
             .animation(.interactiveSpring, value: message.content)
         }
     }

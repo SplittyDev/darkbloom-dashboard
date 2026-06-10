@@ -18,6 +18,7 @@ final class ChatMessageModel {
         set { _usage = newValue?.data }
     }
     
+    var reasoning: String?
     var content: String
     
     init(chat: ChatModel? = nil, role: ChatMessageRole, content: String) {
