@@ -1,0 +1,143 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PROJECT: DarkbloomDashboard.xcodeproj
+  SCHEME: DarkbloomDashboard
+
+jobs:
+  build-macos:
+    name: Build macOS
+    runs-on: macos-26
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Build
+        run: |
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination "platform=macOS" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+  test-macos:
+    name: Test macOS
+    runs-on: macos-26
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Test
+        run: |
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination "platform=macOS" \
+            -skip-testing:DarkbloomDashboardUITests \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+
+  build-ios:
+    name: Build iOS
+    runs-on: macos-26
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Build
+        run: |
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+  test-ios:
+    name: Test iOS
+    runs-on: macos-26
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Select iOS Simulator
+        id: simulator
+        run: |
+          device_id="$(
+            xcodebuild \
+              -project "$PROJECT" \
+              -scheme "$SCHEME" \
+              -showdestinations |
+              ruby -ne '
+                BEGIN { devices = [] }
+                if /platform:iOS Simulator/ &&
+                   (name = $_[/name:([^,}]+)/, 1])&.start_with?("iPhone") &&
+                   (os = $_[/OS:([^,}]+)/, 1]) &&
+                   (id = $_[/id:([^,}]+)/, 1])
+                  devices << [os.split(".").map(&:to_i), id]
+                end
+                END { puts devices.max_by(&:first)&.last }
+              '
+          )"
+
+          if [[ -z "$device_id" ]]; then
+            echo "No available iPhone simulator found." >&2
+            exit 1
+          fi
+
+          echo "id=$device_id" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        run: |
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
+            -skip-testing:DarkbloomDashboardUITests \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            test
