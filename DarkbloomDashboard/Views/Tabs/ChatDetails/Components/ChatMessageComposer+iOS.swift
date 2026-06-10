@@ -76,7 +76,7 @@ extension ChatDetailTab {
             sendMessage: {}
         )
     }
-    .environment(ChatViewModel())
+    .environment(ChatViewModel.get())
 }
 
 #endif
