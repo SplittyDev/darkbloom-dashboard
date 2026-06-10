@@ -8,7 +8,7 @@ struct SidebarChatLink: View {
     let chat: ChatModel
     
     var body: some View {
-        NavigationLink(value: SidebarTab.chat(chat.persistentModelID)) {
+        NavigationLink(value: SidebarTab.chat(chat.stableId)) {
             HStack {
                 if chat.isGeneratingTitle {
                     ProgressView()

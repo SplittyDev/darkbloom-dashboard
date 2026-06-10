@@ -7,7 +7,7 @@ enum SidebarTab: Hashable, Identifiable {
     case models
     case machine(String)
     case machines
-    case chat(PersistentIdentifier?)
+    case chat(UUID?)
     case chats
     case loadGenerator
     case logs

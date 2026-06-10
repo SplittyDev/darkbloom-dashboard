@@ -37,7 +37,7 @@ struct ChatListTab: View {
             Group {
                 switch navValue {
                     case .chat(let chat):
-                        ChatDetailTab(chatId: chat.persistentModelID)
+                        ChatDetailTab(chatId: chat.stableId)
                             .navigationTitle(chat.resolvedTitle)
                     case .newChat:
                         ChatDetailTab()

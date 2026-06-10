@@ -183,7 +183,6 @@ struct ContentView_macOS: View {
                                 .id(chatId)
                         } else {
                             ChatDetailTab()
-                                .id(UUID())
                         }
                     case .chats:
                         EmptyView() // not supported on macOS

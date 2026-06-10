@@ -9,14 +9,16 @@ final class ChatViewModel {
     // MARK: - Instance Cache
     
     /// Cache view models to be reused for the same chat.
-    private static var cache: [PersistentIdentifier: ChatViewModel] = [:]
+    private static var cache: [UUID: ChatViewModel] = [:]
     
-    static func get(chatId: PersistentIdentifier? = nil) -> ChatViewModel {
+    static func get(chatId: UUID? = nil) -> ChatViewModel {
         if let chatId {
             return cache.get(chatId, elseInsert: ChatViewModel(chatId: chatId))
         } else {
             let model = ChatModel()
-            return cache.get(model.persistentModelID, elseInsert: ChatViewModel(uninsertedModel: model))
+            let viewModel = ChatViewModel(uninsertedModel: model)
+            cache[model.stableId] = viewModel
+            return viewModel
         }
     }
     
@@ -56,13 +58,13 @@ final class ChatViewModel {
         self.isInserted = false
     }
     
-    private init(chatId: PersistentIdentifier) {
+    private init(chatId: UUID) {
         let context = SwiftDataUtils.backgroundContext
         self.context = context
         
         // Refetch model in context
         let fd = FetchDescriptor(predicate: #Predicate<ChatModel> { chat in
-            chat.persistentModelID == chatId
+            chat._stableId.flatMap { $0 == chatId.uuidString } == true
         })
         if let results = try? context.fetch(fd), let model = results.first {
             self.chat = model
@@ -198,7 +200,7 @@ final class ChatViewModel {
         
         // Swap to chat tab if chat was just inserted
         if !wasInserted && isInserted {
-            NavigationController.shared.activeTab = .chat(chat.persistentModelID)
+            NavigationController.shared.activeTab = .chat(chat.stableId)
         }
     }
     

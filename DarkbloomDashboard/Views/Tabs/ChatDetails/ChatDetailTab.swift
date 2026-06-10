@@ -9,7 +9,7 @@ struct ChatDetailTab: View {
         viewModel = ChatViewModel.get()
     }
     
-    init(chatId: PersistentIdentifier) {
+    init(chatId: UUID) {
         viewModel = ChatViewModel.get(chatId: chatId)
     }
     
@@ -60,7 +60,7 @@ struct ChatDetailTab: View {
         return chat
     }()
     
-    ChatDetailTab(chatId: chat.persistentModelID)
+    ChatDetailTab(chatId: chat.stableId)
         .modelContainer(SwiftDataUtils.activeModelContainer)
         .scenePadding()
 }

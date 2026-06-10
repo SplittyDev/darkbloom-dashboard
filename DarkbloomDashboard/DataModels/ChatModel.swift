@@ -3,6 +3,15 @@ import SwiftData
 
 @Model
 final class ChatModel {
+    var _stableId: String?
+    var stableId: UUID {
+        if let _stableId {
+            UUID(uuidString: _stableId)!
+        } else {
+            fatalError("ChatModel: Stable ID must be set!")
+        }
+    }
+    
     var createdAt: Date
     var updatedAt: Date
     
@@ -34,6 +43,7 @@ final class ChatModel {
     
     init() {
         let now = Date.now
+        self._stableId = UUID().uuidString
         self.createdAt = now
         self.updatedAt = now
     }
