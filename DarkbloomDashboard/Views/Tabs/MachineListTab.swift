@@ -1,6 +1,9 @@
 import SwiftUI
+import SwiftData
 
 struct MachineListTab: View {
+    @Environment(\.modelContext) private var modelContext
+    
     private let settings = Settings.shared
     private let fleet = FleetController.shared
     
@@ -22,6 +25,12 @@ struct MachineListTab: View {
                         Spacer()
                         CompactTrustIndicator(machine: machine)
                     }
+                }
+            }
+            .onDelete { indexSet in
+                for index in indexSet {
+                    let machine = fleet.machines[index]
+                    modelContext.delete(machine)
                 }
             }
         }
