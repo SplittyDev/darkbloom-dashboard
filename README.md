@@ -15,7 +15,7 @@ Modern Macs featuring unified memory, high memory bandwidth and verifiable trust
 > [!NOTE]
 > This project is not endorsed by or affiliated with EigenLabs, EigenLayer, darkbloom or any other involved parties. I built this for my own use, and open-sourced it so other providers can benefit from it as well.
 
-![Darkbloom Dashboard on macOS](./assets/macos_showcase.png)
+![Darkbloom Dashboard on macOS](./assets/macos_showcase.jpg)
 
 ## Features
 
