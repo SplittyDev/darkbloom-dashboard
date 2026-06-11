@@ -4,12 +4,24 @@ import FiveKit
 struct SSHConfigurationSheet: View {
     @Environment(\.dismiss) private var dismiss
     
-    @State private var connectionInfo = SSHConnectionInfo(user: "", host: "")
+    @State private var connectionInfo: SSHConnectionInfo
     
-    @State private var passwordlessLogin: Bool = true
-    @State private var password: String = ""
+    @State private var passwordlessLogin: Bool
+    @State private var password: String
     
     let machine: MachineModel
+    
+    init(machine: MachineModel) {
+        self.machine = machine
+        self.connectionInfo = machine.sshConnectionInfo ?? SSHConnectionInfo(user: "", host: "")
+        self.passwordlessLogin = machine.sshConnectionInfo?.passwordKeychainId == nil
+        self.password = if let keychainId = machine.sshConnectionInfo?.passwordKeychainId,
+           let password = try? SSHPasswordKeychain.loadPassword(id: keychainId) {
+            password
+        } else {
+            ""
+        }
+    }
     
     private func prepare() {
         if passwordlessLogin {
