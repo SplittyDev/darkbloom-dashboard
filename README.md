@@ -1,16 +1,21 @@
 # Darkbloom Dashboard
 > Monitor your darkbloom machines and earnings.
 
-> [!NOTE]
-> This project is not endorsed by or affiliated with EigenLabs, EigenLayer, darkbloom or any other involved parties. I built this for my own use, and open-sourced it so other providers can benefit from it as well.
-
-## What is Darkbloom?
+<details>
+<summary>What is Darkbloom?</summary>
 
 [Darkbloom](https://www.darkbloom.dev) is a private and secure AI inference network powered by Apple hardware.
 
 Anyone with a sufficiently powerful Mac (MacBook Pro, Mac Studio, etc.) can run the Darkbloom software and become a provider by hosting local AI models and running private inference for users of the network.
 
 Modern Macs featuring unified memory, high memory bandwidth and verifiable trust through mobile device attestation, secure root and other technologies, make it entirely possible to run local inference in a way that's both secure and economical.
+
+</details>
+
+> [!NOTE]
+> This project is not endorsed by or affiliated with EigenLabs, EigenLayer, darkbloom or any other involved parties. I built this for my own use, and open-sourced it so other providers can benefit from it as well.
+
+![Darkbloom Dashboard on macOS](./assets/macos_showcase.png)
 
 ## Features
 
