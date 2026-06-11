@@ -44,7 +44,7 @@ struct ChatDetailTab: View {
     }
 }
 
-#Preview(traits: .sampleData, .controllers) {
+#Preview(traits: .controllers) {
     let chat: ChatModel = {
         let container = SwiftDataUtils.activeModelContainer
         let context = ModelContext(container)
@@ -61,6 +61,5 @@ struct ChatDetailTab: View {
     }()
     
     ChatDetailTab(chatId: chat.stableId)
-        .modelContainer(SwiftDataUtils.activeModelContainer)
         .scenePadding()
 }

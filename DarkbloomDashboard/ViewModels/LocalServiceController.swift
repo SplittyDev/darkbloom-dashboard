@@ -121,9 +121,9 @@ final class LocalServiceController {
         print("-> \(startOutput)")
     }
 
-    func restartRemoteDarkbloom(target: MachineRestartTarget) async throws {
-        print("Restarting darkbloom on remote target: \(target.user)@\(target.host) (\(target.serialNumber))...")
-        let restartOutput = try await run("/usr/bin/ssh", target.sshRestartArguments)
+    func restartRemoteDarkbloom(machine: MachineModel, connectionInfo: SSHConnectionInfo) async throws {
+        print("Restarting darkbloom on remote target: \(connectionInfo.user)@\(connectionInfo.host) (\(machine.serialNo))...")
+        let restartOutput = try await run("/usr/bin/ssh", connectionInfo.sshRestartArguments)
         print("-> \(restartOutput)")
     }
     

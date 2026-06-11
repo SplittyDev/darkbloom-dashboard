@@ -1,17 +1,15 @@
-#if os(macOS)
-
 import Foundation
 import FiveKit
 
 @Observable
 final class RestartTask {
-    let serialNumber: String
+    let machine: MachineModel
     var task: Task<Void, Never>?
     var subtaskLog: [RestartSubtask] = []
     var status: RestartStatus = .inProgress
     
-    init(serialNumber: String) {
-        self.serialNumber = serialNumber
+    init(machine: MachineModel) {
+        self.machine = machine
     }
     
     func subtask(message: String) -> RestartSubtask {
@@ -111,6 +109,7 @@ enum RestartError: Error {
     case trustCheckTimeout
     case missingRemoteConnectionInfo
     case failedToRestartRemoteService
+    case unsupportedOnCurrentOS
 }
 
 @Observable
@@ -118,7 +117,10 @@ final class RestartController {
     static let shared = RestartController()
     
     private let dataController = APIDataController.shared
+    
+    #if os(macOS)
     private let localServiceController = LocalServiceController.shared
+    #endif
     
     private(set) var tasks: [String: RestartTask] = [:]
     private(set) var history: [RestartTask] = []
@@ -126,20 +128,20 @@ final class RestartController {
     private init() {
     }
     
-    func restart(serial: String) -> RestartTask {
-        if let existingTask = tasks[serial] {
+    func restart(machine: MachineModel) -> RestartTask {
+        if let existingTask = tasks[machine.serialNo] {
             return existingTask
         }
         
-        let task = RestartTask(serialNumber: serial)
-        tasks[serial] = task
+        let task = RestartTask(machine: machine)
+        tasks[machine.serialNo] = task
         task.task = Task {
             
             // Stop automatic data updates
             dataController.stopAllUpdates()
             
             // Clear machine info for clean status checking
-            dataController.clearMachineInfo(for: task.serialNumber)
+            dataController.clearMachineInfo(for: task.machine.serialNo)
             
             // Perform restart
             do {
@@ -153,7 +155,7 @@ final class RestartController {
             await dataController.update()
             
             // Remove task from active tracking
-            tasks.removeValue(forKey: serial)
+            tasks.removeValue(forKey: task.machine.serialNo)
             
             // Append task to restart history
             history.append(task)
@@ -168,9 +170,11 @@ final class RestartController {
     }
     
     private func performRestart(for task: RestartTask) async throws {
+        
+        #if os(macOS)
         let isLocalProvider = await task.withSubtask("Checking target provider") { t in
             if let localSerialNumber = localServiceController.currentMachineSerialNumber {
-                if task.serialNumber == localSerialNumber {
+                if task.machine.serialNo == localSerialNumber {
                     t.log("Target is local provider")
                     return true
                 }
@@ -178,14 +182,19 @@ final class RestartController {
             t.log("Target is remote provider")
             return false
         }
+        #endif
         
         try Task.checkCancellation()
         
+        #if os(macOS)
         if isLocalProvider {
             try await performLocalRestart(for: task)
         } else {
             try await performRemoteRestart(for: task)
         }
+        #else
+        try await performRemoteRestart(for: task)
+        #endif
         
         try Task.checkCancellation()
         
@@ -193,18 +202,18 @@ final class RestartController {
             throw RestartError.apiKeyMissing
         }
         
-        let machineInfo = try await task.withSubtask("Waiting for provider to come back online") { t in
+        var machineInfo = try await task.withSubtask("Waiting for provider to come back online") { t in
             var lastCheckDate = Date.now
             while true {
-                try? await APIDataController.shared.refreshStatsAndAttestations()
+                try? await dataController.refreshStatsAndAttestations()
                 
-                if let machine = APIDataController.shared.machineInfo[task.serialNumber] {
-                    if machine.trust.isTrusted {
+                if let info = task.machine.currentInfo {
+                    if info.trust.isTrusted {
                         t.log("Provider is back online and trusted")
-                        return machine
-                    } else if machine.trust.isOnline {
+                        return info
+                    } else if info.trust.isOnline {
                         t.log("Provider is back online")
-                        return machine
+                        return info
                     }
                 }
                 
@@ -223,11 +232,12 @@ final class RestartController {
             try await task.withSubtask("Waiting for provider to become trusted") { t in
                 var lastCheckDate = Date.now
                 while true {
-                    try? await APIDataController.shared.refreshStatsAndAttestations()
+                    try? await dataController.refreshStatsAndAttestations()
                     
-                    if let machine = APIDataController.shared.machineInfo[task.serialNumber] {
-                        if machine.trust.isTrusted {
+                    if let info = task.machine.currentInfo {
+                        if info.trust.isTrusted {
                             t.log("Provider is trusted")
+                            machineInfo = info
                             return
                         }
                     }
@@ -246,11 +256,12 @@ final class RestartController {
         for model in machineInfo.activity.models {
             try Task.checkCancellation()
             try? await task.withSubtask("Warming up '\(model.id)'") { t in
-                try await dataController.warmup(model: model, for: task.serialNumber)
+                try await dataController.warmup(model: model, for: task.machine.serialNo)
             }
         }
     }
     
+    #if os(macOS)
     private func performLocalRestart(for task: RestartTask) async throws {
         let darkbloomLocation: String? = try? await task.withSubtask("Finding darkbloom location") { t in
             let location = try localServiceController.fetchDarkbloomLocation()
@@ -280,24 +291,34 @@ final class RestartController {
             }
         }
     }
+    #endif
     
     private func performRemoteRestart(for task: RestartTask) async throws {
-        let restartTarget: MachineRestartTarget = try await task.withSubtask("Looking up SSH connection info") { t in
-            guard let target = Settings.shared.remoteRestartTargets[task.serialNumber] else {
-                throw RestartError.missingRemoteConnectionInfo
+        #if os(macOS)
+        let connectionInfo: SSHConnectionInfo = try await task
+            .withSubtask("Looking up SSH connection info") { t in
+                guard let connectionInfo = task.machine.sshConnectionInfo else {
+                    throw RestartError.missingRemoteConnectionInfo
+                }
+                return connectionInfo
             }
-            return target
-        }
         
         try await task.withSubtask("Restarting remote darkbloom service") { t in
             do {
-                try await localServiceController.restartRemoteDarkbloom(target: restartTarget)
+                try await localServiceController.restartRemoteDarkbloom(
+                    machine: task.machine,
+                    connectionInfo: connectionInfo
+                )
             } catch {
                 t.log(error: error)
                 throw RestartError.failedToRestartRemoteService
             }
         }
+        #else
+        try await task.withSubtask("Checking device information") { t in
+            t.log("Restarting is currently unsupported on iOS.")
+            throw RestartError.unsupportedOnCurrentOS
+        }
+        #endif
     }
 }
-
-#endif

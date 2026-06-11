@@ -4,7 +4,10 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     
+    @Query(sort: \MachineModel.serialNo) private var machines: [MachineModel]
+    
     private let dataController = APIDataController.shared
+    private let fleetController = FleetController.shared
     private let earningsController = EarningsController.shared
     
     #if os(macOS)
@@ -15,33 +18,6 @@ struct ContentView: View {
     #endif
     
     private let settings = Settings.shared
-    
-    private func performMigrations() {
-        func createAndDeduplicateStableChatModelIDs() {
-            let fdChats = FetchDescriptor(predicate: Predicate<ChatModel>.true)
-            let fdChatResults = try? modelContext.fetch(fdChats)
-            var stableIdSet: Set<String> = []
-            for chatModel in fdChatResults ?? [] {
-                var createNew: Bool = false
-                if let stableId = chatModel._stableId {
-                    if stableIdSet.contains(stableId) {
-                        createNew = true
-                    } else {
-                        stableIdSet.insert(stableId)
-                    }
-                } else {
-                    createNew = true
-                }
-                if createNew {
-                    let newStableId = UUID().uuidString
-                    chatModel._stableId = newStableId
-                    stableIdSet.insert(newStableId)
-                }
-            }
-            try? modelContext.save()
-        }
-        createAndDeduplicateStableChatModelIDs()
-    }
     
     @ViewBuilder private var platformContent: some View {
         Group {
@@ -58,16 +34,20 @@ struct ContentView: View {
             #endif
         }
         .environment(dataController)
+        .environment(fleetController)
         .environment(earningsController)
     }
     
     var body: some View {
         platformContent
             .onAppear {
-                performMigrations()
+                Migrator(modelContext: modelContext).run()
             }
             .task(id: dataController.balanceChanges) {
                 await earningsController.calculateProjections(basedOn: dataController.balanceChanges)
+            }
+            .onChange(of: machines, initial: true) {
+                fleetController.updateMachines(machines)
             }
             .onChange(of: settings.apiKey) {
                 guard let apiKey = settings.apiKey else { return }

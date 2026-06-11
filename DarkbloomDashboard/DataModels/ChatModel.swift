@@ -23,16 +23,8 @@ final class ChatModel {
     
     private var _modelId: String?
     var model: DarkbloomModel {
-        get {
-            if let _modelId {
-                DarkbloomModel(rawValue: _modelId)
-            } else {
-                DarkbloomModel.`gpt-oss-20b`
-            }
-        }
-        set {
-            _modelId = newValue.rawValue
-        }
+        get { _modelId.flatMap(DarkbloomModel.init(rawValue:)) ?? .`gpt-oss-20b` }
+        set { _modelId = newValue.rawValue }
     }
     
     private var _routing: Data?

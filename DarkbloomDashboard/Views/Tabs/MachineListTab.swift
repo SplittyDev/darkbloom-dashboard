@@ -1,19 +1,20 @@
 import SwiftUI
 
 struct MachineListTab: View {
-    let settings = Settings.shared
+    private let settings = Settings.shared
+    private let fleet = FleetController.shared
     
     var body: some View {
         List {
-            ForEach(settings.trackedMachineSerialNumbers) { serialNo in
-                NavigationLink(value: serialNo) {
-                    Text(serialNo)
+            ForEach(fleet.machines) { machine in
+                NavigationLink(value: machine) {
+                    Text(machine.serialNo)
                 }
             }
         }
-        .navigationDestination(for: String.self) { serialNo in
-            MachineDetailTab(serialNo: serialNo)
-                .navigationTitle(serialNo)
+        .navigationDestination(for: MachineModel.self) { machine in
+            MachineDetailTab(machine: machine)
+                .navigationTitle(machine.serialNo)
                 #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
                 #endif

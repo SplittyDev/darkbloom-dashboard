@@ -4,7 +4,10 @@ import SwiftUI
 import SwiftData
 
 struct ContentView_macOS: View {
+    @Environment(\.modelContext) private var modelContext
+    
     @Environment(APIDataController.self) private var dataController
+    @Environment(FleetController.self) private var fleetController
     @Environment(LocalLogController.self) private var logsViewModel
     @Environment(LocalServiceController.self) private var localServiceController
     
@@ -80,12 +83,12 @@ struct ContentView_macOS: View {
     
     @ViewBuilder private var fleetSection: some View {
         Section {
-            if settings.trackedMachineSerialNumbers.isEmpty {
+            if fleetController.machines.isEmpty {
                 Text("No machines tracked.")
                     .foregroundStyle(.secondary)
             }
-            ForEach(settings.trackedMachineSerialNumbers) { serialNo in
-                SidebarMachineLink(serialNo: serialNo)
+            ForEach(fleetController.machines) { machine in
+                SidebarMachineLink(machine: machine)
             }
         } header: {
             HStack {
@@ -103,7 +106,8 @@ struct ContentView_macOS: View {
                     TextField("Serial Number", text: $newMachineSerialNumber)
                     
                     Button("Save") {
-                        settings.trackedMachineSerialNumbers.append(newMachineSerialNumber)
+                        let model = MachineModel(serialNo: newMachineSerialNumber)
+                        modelContext.insert(model)
                         newMachineSerialNumber = ""
                     }
                     
@@ -172,9 +176,9 @@ struct ContentView_macOS: View {
                         NetworkTab()
                     case .models:
                         ModelsTab()
-                    case .machine(let serialNo):
-                        MachineDetailTab(serialNo: serialNo)
-                            .id(serialNo)
+                    case .machine(let machine):
+                        MachineDetailTab(machine: machine)
+                            .id(machine.serialNo)
                     case .machines:
                         EmptyView() // not supported on macOS
                     case .chat(let chatId):

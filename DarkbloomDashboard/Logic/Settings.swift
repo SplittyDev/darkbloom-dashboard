@@ -1,5 +1,20 @@
 import Foundation
 
+enum UserDefaultKey: String {
+    case apiKey = "darkbloom_api_key"
+    
+    enum Migration: String {
+        case legacyChatsToStableIdentifiers = "migration.chat_stable_ids"
+        case fleetToSwiftData = "migration.fleet_to_swift_data"
+    }
+    
+    enum Legacy: String {
+        case trackedMachineSerialNumbers = "tracked_machine_serial_numbers"
+        case loadTestingApiKeys = "load_testing_api_keys"
+        case remoteRestartTargets = "remote_restart_targets"
+    }
+}
+
 @MainActor @Observable
 final class Settings {
     static let shared = Settings()
@@ -7,65 +22,55 @@ final class Settings {
     private let defaults: UserDefaults = UserDefaults.standard
     
     var apiKey: String? {
-        didSet { defaults.set(apiKey, forKey: "darkbloom_api_key") }
+        didSet { defaults.set(apiKey, forKey: UserDefaultKey.apiKey.rawValue) }
     }
     
-    var trackedMachineSerialNumbers: [String] {
+    // MARK: Migrations
+    
+    var migratedLegacyChatsToStableIdentifiers: Bool {
         didSet {
             defaults.set(
-                trackedMachineSerialNumbers.joined(separator: ","),
-                forKey: "tracked_machine_serial_numbers"
+                migratedLegacyChatsToStableIdentifiers,
+                forKey: UserDefaultKey.Migration.legacyChatsToStableIdentifiers.rawValue
             )
         }
     }
+    
+    var migratedFleetToSwiftData: Bool {
+        didSet {
+            defaults.set(
+                migratedFleetToSwiftData,
+                forKey: UserDefaultKey.Migration.fleetToSwiftData.rawValue
+            )
+        }
+    }
+    
+    // MARK: Legacy
     
     var loadTestingApiKeys: [String] {
         didSet {
             defaults.set(
                 loadTestingApiKeys.joined(separator: ","),
-                forKey: "load_testing_api_keys"
+                forKey: UserDefaultKey.Legacy.loadTestingApiKeys.rawValue
             )
         }
     }
-
-    #if os(macOS)
-    var remoteRestartTargets: [String: MachineRestartTarget] {
-        didSet {
-            let data = try? JSONEncoder().encode(remoteRestartTargets)
-            defaults.set(data, forKey: "remote_restart_targets")
-        }
-    }
-
-    func setRemoteRestartTarget(_ target: MachineRestartTarget) {
-        var targets = remoteRestartTargets
-        targets[target.serialNumber] = target
-        remoteRestartTargets = targets
-    }
-
-    func removeRemoteRestartTarget(serialNumber: String) {
-        var targets = remoteRestartTargets
-        targets[serialNumber] = nil
-        remoteRestartTargets = targets
-    }
-    #endif
+    
+    // MARK: Initializer
     
     private init() {
-        self.apiKey = defaults.string(forKey: "darkbloom_api_key")
-        self.trackedMachineSerialNumbers = defaults
-            .string(forKey: "tracked_machine_serial_numbers")
-            .map { $0.split(separator: ",").map(String.init) } ?? []
+        self.apiKey = defaults.string(forKey: UserDefaultKey.apiKey.rawValue)
+        
+        self.migratedLegacyChatsToStableIdentifiers = defaults.bool(
+            forKey: UserDefaultKey.Migration.legacyChatsToStableIdentifiers.rawValue
+        )
+        
+        self.migratedFleetToSwiftData = defaults.bool(
+            forKey: UserDefaultKey.Migration.fleetToSwiftData.rawValue
+        )
+        
         self.loadTestingApiKeys = defaults
-            .string(forKey: "load_testing_api_keys")
+            .string(forKey: UserDefaultKey.Legacy.loadTestingApiKeys.rawValue)
             .map { $0.split(separator: ",").map(String.init) } ?? []
-        #if os(macOS)
-        if let data = defaults.data(forKey: "remote_restart_targets") {
-            self.remoteRestartTargets = (try? JSONDecoder().decode(
-                [String: MachineRestartTarget].self,
-                from: data
-            )) ?? [:]
-        } else {
-            self.remoteRestartTargets = [:]
-        }
-        #endif
     }
 }

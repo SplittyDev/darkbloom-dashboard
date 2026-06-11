@@ -5,6 +5,7 @@ enum SwiftDataUtils {
     static let schema = Schema([
         ChatModel.self,
         ChatMessageModel.self,
+        MachineModel.self,
     ])
     
     static var activeModelContainer: ModelContainer {

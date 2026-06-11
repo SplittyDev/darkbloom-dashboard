@@ -94,6 +94,7 @@ extension ChatDetailTab {
     struct RoutingPicker: View {
         @Environment(ChatViewModel.self) private var viewModel
         @Environment(APIDataController.self) private var dataController
+        @Environment(FleetController.self) private var fleetController
         
         private let settings = Settings.shared
         
@@ -104,7 +105,7 @@ extension ChatDetailTab {
                 Text("Auto Routing").tag(ChatRouting.auto)
                 Divider()
                 Text("Any Fleet Member").tag(ChatRouting.anyFleet)
-                ForEach(settings.trackedMachineSerialNumbers) { serialNo in
+                ForEach(fleetController.machineSerialNumbers) { serialNo in
                     if let resolvedMachine = dataController.machineInfo[serialNo] {
                         let displayName = resolvedMachine.hardware.modelDisplayName
                         Text("\(displayName) (\(serialNo))").tag(ChatRouting.only(serialNo))

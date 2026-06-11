@@ -9,7 +9,7 @@ nonisolated enum ChatMessageRole: String, Sendable {
     case tool = "tool"
 }
 
-extension ChatMessageRole {
+nonisolated extension ChatMessageRole {
     
     init(from role: OpenAI::ChatQuery.ChatCompletionMessageParam.Role) {
         self.init(rawValue: role.rawValue)!

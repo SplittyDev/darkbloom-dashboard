@@ -96,9 +96,8 @@ final class ChatViewModel {
         // Find best routing, preferring tracked machines
         let model: DarkbloomModel = .`gpt-oss-20b`
         let idealRouting: ChatRouting = {
-            let fleet = Settings.shared.trackedMachineSerialNumbers
             var availableFleet: [String] = []
-            for serialNo in fleet {
+            for serialNo in FleetController.shared.machineSerialNumbers {
                 guard let machineInfo = APIDataController.shared.machineInfo[serialNo] else { continue }
                 if machineInfo.trust.isTrusted && machineInfo.activity.models.contains(model) {
                     availableFleet.append(serialNo)

@@ -51,10 +51,9 @@ struct ChatListTab: View {
     }
 }
 
-#Preview(traits: .sampleData) {
+#Preview(traits: .controllers) {
     NavigationStack {
         ChatListTab()
             .navigationTitle("Chats")
     }
-    .modelContainer(SwiftDataUtils.activeModelContainer)
 }

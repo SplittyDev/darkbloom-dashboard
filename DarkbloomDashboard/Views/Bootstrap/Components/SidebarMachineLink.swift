@@ -1,17 +1,16 @@
 import SwiftUI
+import SwiftData
 import FiveKit
 
 struct SidebarMachineLink: View {
+    @Environment(\.modelContext) private var modelContext
+    
     @Environment(APIDataController.self) private var viewModel
     
-    let serialNo: String
-    
-    var machine: MachineInfo? {
-        viewModel.machineInfo[serialNo]
-    }
+    let machine: MachineModel
     
     var body: some View {
-        let value = SidebarTab.machine(serialNo)
+        let value = SidebarTab.machine(machine)
         NavigationLink(value: value) {
             HStack {
                 RoundedRectangle(cornerRadius: 6)
@@ -19,7 +18,7 @@ struct SidebarMachineLink: View {
                     .frame(width: 28, height: 28)
                     .overlay {
                         Group {
-                            if let machine, let model = ModelIdentifier(rawValue: machine.hardware.modelIdentifier) {
+                            if let info = machine.currentInfo, let model = ModelIdentifier(rawValue: info.hardware.modelIdentifier) {
                                 Image(systemName: model.modelKind.systemImage)
                                     .resizable()
                                     .aspectRatio(contentMode: .fit)
@@ -35,18 +34,18 @@ struct SidebarMachineLink: View {
                     }
                 VStack(alignment: .leading) {
                     Text(value.title)
-                    if let machine {
-                        Text(machine.hardware.modelDisplayName)
+                    if let info = machine.currentInfo {
+                        Text(info.hardware.modelDisplayName)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .transition(.blurReplace)
                     }
                 }
                 Spacer()
-                if let machine {
-                    if machine.trust.isOnline {
+                if let info = machine.currentInfo {
+                    if info.trust.isOnline {
                         Group {
-                            if machine.trust.isTrusted {
+                            if info.trust.isTrusted {
                                 Text(Image(systemName: "checkmark.shield.fill"))
                             } else {
                                 Text(Image(systemName: "shield.slash.fill"))
@@ -62,13 +61,18 @@ struct SidebarMachineLink: View {
                 }
             }
         }
+        .contextMenu {
+            DeleteButton {
+                modelContext.delete(machine)
+            }
+        }
         .animation(.smooth, value: machine)
     }
 }
 
 #Preview(traits: .controllers) {
     List {
-        SidebarMachineLink(serialNo: "NJD6MGW279")
+        SidebarMachineLink(machine: MachineModel(serialNo: "NJD6MGW279"))
     }
     .listStyle(.sidebar)
 }

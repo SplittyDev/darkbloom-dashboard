@@ -1,66 +1,41 @@
 import SwiftUI
+import SwiftData
 import FiveKit
 
 extension OverviewTab {
     struct TrackedMachineListSection: View {
-        @Environment(APIDataController.self) private var viewModel
+        @Environment(\.modelContext) private var modelContext
         
-        @State private var showAddMachineAlert: Bool = false
-        @State private var newMachineSerialNumber: String = ""
+        @Environment(APIDataController.self) private var dataController
+        @Environment(FleetController.self) private var fleetController
         
         private let settings = Settings.shared
         
         var body: some View {
             Section {
-                if settings.trackedMachineSerialNumbers.isEmpty {
+                if fleetController.machines.isEmpty {
                     Text("You haven't tracked any machines yet.")
                 } else {
-                    ForEach(settings.trackedMachineSerialNumbers) { serialNo in
+                    ForEach(fleetController.machines) { machine in
                         HStack(alignment: .firstTextBaseline) {
-                            Text(serialNo)
+                            Text(machine.serialNo)
                             Spacer()
-                            if let machine = viewModel.machineInfo[serialNo] {
+                            if let machine = dataController.machineInfo[machine.serialNo] {
                                 TrustExplanationButton(trust: machine.trust)
-                            }
-                        }
-                        .contentShape(.rect)
-                        .contextMenu {
-                            DeleteButton {
-                                settings.trackedMachineSerialNumbers.removeAll(subject: serialNo)
                             }
                         }
                     }
                     .onDelete { indexSet in
-                        settings.trackedMachineSerialNumbers.remove(atOffsets: indexSet)
+                        for index in indexSet {
+                            let machine = fleetController.machines[index]
+                            modelContext.delete(machine)
+                        }
                     }
                 }
             } header: {
                 HStack(alignment: .bottom) {
                     Label("Fleet", systemImage: "server.rack")
                     Spacer()
-                    Button {
-                        showAddMachineAlert = true
-                    } label: {
-                        Text("Add Machine")
-                    }
-                }
-            }
-            .alert("Add Machine", isPresented: $showAddMachineAlert) {
-                TextField("Serial Number", text: $newMachineSerialNumber)
-                
-                Button("Save") {
-                    settings.trackedMachineSerialNumbers.append(newMachineSerialNumber)
-                    newMachineSerialNumber = ""
-                }
-                
-                if #available(iOS 26, macOS 26, *) {
-                    Button(role: .cancel) {
-                        newMachineSerialNumber = ""
-                    }
-                } else {
-                    Button("Cancel", role: .cancel) {
-                        newMachineSerialNumber = ""
-                    }
                 }
             }
         }

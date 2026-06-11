@@ -5,7 +5,7 @@ enum SidebarTab: Hashable, Identifiable {
     case overview
     case network
     case models
-    case machine(String)
+    case machine(MachineModel)
     case machines
     case chat(UUID?)
     case chats
@@ -31,7 +31,7 @@ enum SidebarTab: Hashable, Identifiable {
             case .overview: "Overview"
             case .network: "Network"
             case .models: "Models"
-            case .machine(let id): id
+            case .machine(let machine): machine.serialNo
             case .machines: "Fleet"
             case .chat: "Chat"
             case .chats: "Chats"
