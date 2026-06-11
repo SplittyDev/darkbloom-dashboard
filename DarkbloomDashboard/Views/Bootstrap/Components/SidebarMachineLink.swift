@@ -13,25 +13,7 @@ struct SidebarMachineLink: View {
         let value = SidebarTab.machine(machine)
         NavigationLink(value: value) {
             HStack {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.systemFill)
-                    .frame(width: 28, height: 28)
-                    .overlay {
-                        Group {
-                            if let info = machine.currentInfo, let model = ModelIdentifier(rawValue: info.hardware.modelIdentifier) {
-                                Image(systemName: model.modelKind.systemImage)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .padding(6)
-                            } else {
-                                Image(systemName: value.systemImage)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .padding(6)
-                            }
-                        }
-                        .transition(.blurReplace)
-                    }
+                MachineHardwareIcon(machine: machine, size: 28)
                 VStack(alignment: .leading) {
                     Text(value.title)
                     if let info = machine.currentInfo {
@@ -42,23 +24,7 @@ struct SidebarMachineLink: View {
                     }
                 }
                 Spacer()
-                if let info = machine.currentInfo {
-                    if info.trust.isOnline {
-                        Group {
-                            if info.trust.isTrusted {
-                                Text(Image(systemName: "checkmark.shield.fill"))
-                            } else {
-                                Text(Image(systemName: "shield.slash.fill"))
-                                    .foregroundStyle(Color.yellow)
-                            }
-                        }
-                        .transition(.blurReplace)
-                    } else {
-                        Text(Image(systemName: "circle.fill"))
-                            .foregroundStyle(Color.red)
-                            .transition(.blurReplace)
-                    }
-                }
+                CompactTrustIndicator(machine: machine)
             }
         }
         .contextMenu {

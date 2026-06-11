@@ -8,7 +8,20 @@ struct MachineListTab: View {
         List {
             ForEach(fleet.machines) { machine in
                 NavigationLink(value: machine) {
-                    Text(machine.serialNo)
+                    HStack {
+                        MachineHardwareIcon(machine: machine, size: 28)
+                        VStack(alignment: .leading) {
+                            Text(machine.serialNo)
+                            if let info = machine.currentInfo {
+                                Text(info.hardware.modelDisplayName)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .transition(.blurReplace)
+                            }
+                        }
+                        Spacer()
+                        CompactTrustIndicator(machine: machine)
+                    }
                 }
             }
         }
