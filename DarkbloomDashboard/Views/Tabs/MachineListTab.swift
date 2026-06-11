@@ -25,6 +25,11 @@ struct MachineListTab: View {
                 }
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                AddFleetMachineButton()
+            }
+        }
         .navigationDestination(for: MachineModel.self) { machine in
             MachineDetailTab(machine: machine)
                 .navigationTitle(machine.serialNo)

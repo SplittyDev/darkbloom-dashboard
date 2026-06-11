@@ -94,27 +94,7 @@ struct ContentView_macOS: View {
             HStack {
                 Text("Fleet")
                 Spacer()
-                Button {
-                    showAddMachineAlert = true
-                } label: {
-                    Text(Image(systemName: "plus"))
-                }
-                .buttonStyle(.accessoryBar)
-                .buttonBorderShape(.circle)
-                .padding(.trailing, 10)
-                .alert("Add Machine", isPresented: $showAddMachineAlert) {
-                    TextField("Serial Number", text: $newMachineSerialNumber)
-                    
-                    Button("Save") {
-                        let model = MachineModel(serialNo: newMachineSerialNumber)
-                        modelContext.insert(model)
-                        newMachineSerialNumber = ""
-                    }
-                    
-                    CancelButton {
-                        newMachineSerialNumber = ""
-                    }
-                }
+                AddFleetMachineButton().padding(.trailing, 10)
             }
         }
     }
