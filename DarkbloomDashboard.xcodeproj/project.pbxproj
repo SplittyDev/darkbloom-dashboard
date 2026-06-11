@@ -11,6 +11,7 @@
 		CA6C51712FDA48F20090FE69 /* FuzzySearch in Frameworks */ = {isa = PBXBuildFile; productRef = CA6C51702FDA48F20090FE69 /* FuzzySearch */; };
 		CA8C3BE22FD76A5800DA9C92 /* MarkdownView in Frameworks */ = {isa = PBXBuildFile; productRef = CA8C3BE12FD76A5800DA9C92 /* MarkdownView */; };
 		CAA2A1BB2FCAD6E2006DAECF /* FiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = CAA2A1BA2FCAD6E2006DAECF /* FiveKit */; };
+		CAC848582FDAD03200F77B40 /* Citadel in Frameworks */ = {isa = PBXBuildFile; productRef = CAC848572FDAD03200F77B40 /* Citadel */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +60,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CAC848582FDAD03200F77B40 /* Citadel in Frameworks */,
 				CAA2A1BB2FCAD6E2006DAECF /* FiveKit in Frameworks */,
 				CA6C51712FDA48F20090FE69 /* FuzzySearch in Frameworks */,
 				CA6C3EB22FD8350D0090FE69 /* OpenAI in Frameworks */,
@@ -127,6 +129,7 @@
 				CA8C3BE12FD76A5800DA9C92 /* MarkdownView */,
 				CA6C3EB12FD8350D0090FE69 /* OpenAI */,
 				CA6C51702FDA48F20090FE69 /* FuzzySearch */,
+				CAC848572FDAD03200F77B40 /* Citadel */,
 			);
 			productName = "Darkbloom Dashboard";
 			productReference = CAD713372FCAD54E0072280F /* DarkbloomDashboard.app */;
@@ -215,6 +218,7 @@
 				CA8C3BE02FD76A5800DA9C92 /* XCRemoteSwiftPackageReference "MarkdownView" */,
 				CA6C3EB02FD8350D0090FE69 /* XCRemoteSwiftPackageReference "OpenAI-OpenRouter" */,
 				CA6C516F2FDA48F10090FE69 /* XCRemoteSwiftPackageReference "FuzzySearch" */,
+				CAC848562FDAD03100F77B40 /* XCRemoteSwiftPackageReference "Citadel" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = CAD713382FCAD54E0072280F /* Products */;
@@ -684,6 +688,14 @@
 				kind = branch;
 			};
 		};
+		CAC848562FDAD03100F77B40 /* XCRemoteSwiftPackageReference "Citadel" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/orlandos-nl/Citadel.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.12.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -706,6 +718,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = CAA2A1B92FCAD6E2006DAECF /* XCRemoteSwiftPackageReference "FiveKit" */;
 			productName = FiveKit;
+		};
+		CAC848572FDAD03200F77B40 /* Citadel */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CAC848562FDAD03100F77B40 /* XCRemoteSwiftPackageReference "Citadel" */;
+			productName = Citadel;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -1,5 +1,8 @@
 import Foundation
 import FiveKit
+import Citadel
+import NIOCore
+import NIOFoundationEssentialsCompat
 
 @Observable
 final class RestartTask {
@@ -33,6 +36,31 @@ final class RestartTask {
     
     func complete(with status: RestartStatus) {
         self.status = status
+    }
+}
+
+private nonisolated final class SSHClientBox: @unchecked Sendable {
+    let client: SSHClient
+
+    init(_ client: SSHClient) {
+        self.client = client
+    }
+}
+
+private actor SSHClientHolder {
+    let box: SSHClientBox
+    
+    init(connectionInfo: SSHConnectionInfo) async throws {
+        let clientSettings = connectionInfo.sshClientSettings
+        self.box = SSHClientBox(try await SSHClient.connect(to: clientSettings))
+    }
+    
+    func executeCommand(_ command: String, mergeStreams: Bool = false) async throws -> ByteBuffer {
+        try await box.client.executeCommand(command, mergeStreams: mergeStreams)
+    }
+    
+    func disconnect() async throws {
+        try await box.client.close()
     }
 }
 
@@ -109,6 +137,7 @@ enum RestartError: Error {
     case trustCheckTimeout
     case missingRemoteConnectionInfo
     case failedToRestartRemoteService
+    case failedToEstablishSSHConnection
     case unsupportedOnCurrentOS
 }
 
@@ -294,7 +323,6 @@ final class RestartController {
     #endif
     
     private func performRemoteRestart(for task: RestartTask) async throws {
-        #if os(macOS)
         let connectionInfo: SSHConnectionInfo = try await task
             .withSubtask("Looking up SSH connection info") { t in
                 guard let connectionInfo = task.machine.sshConnectionInfo else {
@@ -303,22 +331,32 @@ final class RestartController {
                 return connectionInfo
             }
         
-        try await task.withSubtask("Restarting remote darkbloom service") { t in
+        let ssh: SSHClientHolder = try await task.withSubtask("Establishing SSH connection") { t in
             do {
-                try await localServiceController.restartRemoteDarkbloom(
-                    machine: task.machine,
-                    connectionInfo: connectionInfo
-                )
+                return try await SSHClientHolder(connectionInfo: connectionInfo)
+            } catch {
+                t.log(error: error)
+                throw RestartError.failedToEstablishSSHConnection
+            }
+        }
+        
+        await task.withSubtask("Stopping darkbloom service") { t in
+            let stopResp = try? await ssh.executeCommand("~/.darkbloom/bin/darkbloom stop")
+            if var stopResp, let output = stopResp.readString(length: stopResp.readableBytes, encoding: .utf8) {
+                t.log(output)
+            }
+        }
+        
+        try await task.withSubtask("Starting darkbloom service") { t in
+            do {
+                var startResp = try await ssh.executeCommand("~/.darkbloom/bin/darkbloom start --all", mergeStreams: true)
+                if let output = startResp.readString(length: startResp.readableBytes, encoding: .utf8) {
+                    t.log(output)
+                }
             } catch {
                 t.log(error: error)
                 throw RestartError.failedToRestartRemoteService
             }
         }
-        #else
-        try await task.withSubtask("Checking device information") { t in
-            t.log("Restarting is currently unsupported on iOS.")
-            throw RestartError.unsupportedOnCurrentOS
-        }
-        #endif
     }
 }

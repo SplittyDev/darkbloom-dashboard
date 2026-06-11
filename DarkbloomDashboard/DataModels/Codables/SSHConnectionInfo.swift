@@ -1,4 +1,6 @@
 import Foundation
+import CryptoKit
+import Citadel
 
 nonisolated struct SSHConnectionInfo: CodableData {
     var user: String
@@ -8,14 +10,18 @@ nonisolated struct SSHConnectionInfo: CodableData {
 
 nonisolated extension SSHConnectionInfo {
     
-    /// - Warning: This should not be used going forward, as it doesn't support password auth.
-    var sshRestartArguments: [String] {
-        [
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=10",
-            "-o", "StrictHostKeyChecking=accept-new",
-            "\(user)@\(host)",
-            "~/.darkbloom/bin/darkbloom stop; sleep 2; ~/.darkbloom/bin/darkbloom start --all"
-        ]
+    var sshClientSettings: SSHClientSettings {
+        SSHClientSettings(
+            host: host,
+            authenticationMethod: {
+                if let passwordKeychainId,
+                   let password = try? SSHPasswordKeychain.loadPassword(id: passwordKeychainId) {
+                    SSHAuthenticationMethod.passwordBased(username: user, password: password)
+                } else {
+                    SSHAuthenticationMethod.ed25519(username: user, privateKey: Curve25519.Signing.PrivateKey())
+                }
+            },
+            hostKeyValidator: .acceptAnything()
+        )
     }
 }

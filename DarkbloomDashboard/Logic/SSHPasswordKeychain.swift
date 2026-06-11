@@ -6,7 +6,7 @@ enum KeychainError: Error {
     case invalidData
 }
 
-enum SSHPasswordKeychain {
+nonisolated enum SSHPasswordKeychain {
     private static let service = "me.splitty.DarkbloomDashboard.ssh-password"
 
     static func savePassword(_ password: String, id: String) throws {
