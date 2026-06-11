@@ -5,6 +5,7 @@ import SwiftData
 
 struct ContentView_macOS: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.redactionReasons) private var redactionReasons
     
     @Environment(APIDataController.self) private var dataController
     @Environment(FleetController.self) private var fleetController
@@ -19,6 +20,20 @@ struct ContentView_macOS: View {
     @State private var newMachineSerialNumber: String = ""
     
     private let settings = Settings.shared
+    
+    private func title(for tab: SidebarTab) -> String {
+        switch tab {
+            case .machine(let machine):
+                if let displayName = machine.currentInfo?.hardware.modelDisplayName {
+                    displayName
+                } else if !redactionReasons.contains(.privacy) {
+                    machine.serialNo
+                } else {
+                    "Provider Details"
+                }
+            default: navigation.activeTab.title
+        }
+    }
     
     private func subtitle(for tab: SidebarTab) -> String {
         let dateFormatter = DateFormatter()
@@ -179,7 +194,7 @@ struct ContentView_macOS: View {
                         LogsTab()
                 }
             }
-            .navigationTitle(navigation.activeTab.title)
+            .navigationTitle(title(for: navigation.activeTab))
             .navigationSubtitle(subtitle(for: navigation.activeTab))
             .toolbar {
                 if shouldShowUpdateButton(for: navigation.activeTab) {
