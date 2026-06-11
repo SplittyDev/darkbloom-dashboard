@@ -16,6 +16,7 @@ struct SidebarMachineLink: View {
                 MachineHardwareIcon(machine: machine, size: 28)
                 VStack(alignment: .leading) {
                     Text(value.title)
+                        .privacySensitive()
                     if let info = machine.currentInfo {
                         Text(info.hardware.modelDisplayName)
                             .font(.caption)

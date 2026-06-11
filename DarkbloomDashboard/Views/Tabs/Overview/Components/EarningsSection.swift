@@ -12,6 +12,7 @@ extension OverviewTab {
                         if let balance = dataController.balance {
                             Text(balance.formatted)
                                 .foregroundStyle(.primary)
+                                .privacySensitive()
                         } else {
                             ProgressView()
                                 .controlSize(.small)
@@ -26,6 +27,7 @@ extension OverviewTab {
                     let value1m = projectedEarnings.projectedEarningsPerMonth.formatted(.currency(code: "USD"))
                     LabeledContent {
                         Text("\(value1m) / month")
+                            .privacySensitive()
                     } label: {
                         Text("Projected Earnings")
                     }

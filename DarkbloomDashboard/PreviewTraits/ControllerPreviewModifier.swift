@@ -5,6 +5,7 @@ struct ControllerPreviewModifier: PreviewModifier {
     private let dataController = APIDataController.shared
     private let fleetController = FleetController.shared
     private let earningsController = EarningsController.shared
+    private let uiPreferenceController = UIPreferenceController.shared
     
     #if os(macOS)
     private let localServiceController = LocalServiceController.shared
@@ -49,6 +50,7 @@ struct ControllerPreviewModifier: PreviewModifier {
             .environment(dataController)
             .environment(fleetController)
             .environment(earningsController)
+            .environment(uiPreferenceController)
             #if os(macOS)
             .environment(localServiceController)
             .environment(loadTestingController)

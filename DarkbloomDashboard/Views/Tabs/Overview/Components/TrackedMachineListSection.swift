@@ -18,7 +18,7 @@ extension OverviewTab {
                 } else {
                     ForEach(fleetController.machines) { machine in
                         HStack(alignment: .firstTextBaseline) {
-                            Text(machine.serialNo)
+                            Text(machine.serialNo).privacySensitive()
                             Spacer()
                             if let machine = dataController.machineInfo[machine.serialNo] {
                                 TrustExplanationButton(trust: machine.trust)

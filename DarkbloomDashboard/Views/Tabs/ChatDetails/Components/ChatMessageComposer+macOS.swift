@@ -92,6 +92,8 @@ extension ChatDetailTab {
     }
     
     struct RoutingPicker: View {
+        @Environment(\.redactionReasons) private var redactionReasons
+        
         @Environment(ChatViewModel.self) private var viewModel
         @Environment(APIDataController.self) private var dataController
         @Environment(FleetController.self) private var fleetController
@@ -106,11 +108,12 @@ extension ChatDetailTab {
                 Divider()
                 Text("Any Fleet Member").tag(ChatRouting.anyFleet)
                 ForEach(fleetController.machineSerialNumbers) { serialNo in
+                    let displaySerialNo = redactionReasons.contains(.privacy) ? "hidden" : serialNo
                     if let resolvedMachine = dataController.machineInfo[serialNo] {
                         let displayName = resolvedMachine.hardware.modelDisplayName
-                        Text("\(displayName) (\(serialNo))").tag(ChatRouting.only(serialNo))
+                        Text("\(displayName) (\(displaySerialNo))").tag(ChatRouting.only(serialNo))
                     } else {
-                        Text(serialNo).tag(ChatRouting.only(serialNo))
+                        Text("\(displaySerialNo)").tag(ChatRouting.only(serialNo))
                     }
                 }
             } label: {

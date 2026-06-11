@@ -14,6 +14,7 @@ struct MachineDetailTab: View {
                 Section {
                     LabeledContent {
                         Text(info.providerId)
+                            .privacySensitive()
                     } label: {
                         Text("Provider ID")
                     }

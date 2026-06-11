@@ -11,16 +11,6 @@ extension OverviewTab {
         
         private let settings = Settings.shared
         
-        private func label(for serialNumber: String) -> String {
-            if serialNumber == localServiceController.currentMachineSerialNumber {
-                return "This Mac (\(serialNumber))"
-            }
-            if let displayName = dataController.machineInfo[serialNumber]?.hardware.modelDisplayName {
-                return "\(displayName) (\(serialNumber))"
-            }
-            return serialNumber
-        }
-        
         var body: some View {
             Section {
                 LabeledContent {

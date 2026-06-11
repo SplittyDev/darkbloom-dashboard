@@ -15,6 +15,7 @@ struct MachineListTab: View {
                         MachineHardwareIcon(machine: machine, size: 28)
                         VStack(alignment: .leading) {
                             Text(machine.serialNo)
+                                .privacySensitive()
                             if let info = machine.currentInfo {
                                 Text(info.hardware.modelDisplayName)
                                     .font(.caption)

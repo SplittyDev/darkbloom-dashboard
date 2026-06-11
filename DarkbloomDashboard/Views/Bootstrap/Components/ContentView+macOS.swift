@@ -147,6 +147,9 @@ struct ContentView_macOS: View {
                 utilitySection
                 chatSection
             }
+            .toolbar {
+                PrivacyToggle()
+            }
         } detail: {
             Group {
                 switch navigation.activeTab {
