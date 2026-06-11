@@ -28,7 +28,7 @@ nonisolated struct DarkbloomLogEntry: Equatable, Identifiable, Sendable {
     }
 }
 
-extension DarkbloomLogEntry: Searchable {
+nonisolated extension DarkbloomLogEntry: Searchable {
     var searchDescriptor: SearchDescriptor {
         SearchDescriptor(message)
     }
