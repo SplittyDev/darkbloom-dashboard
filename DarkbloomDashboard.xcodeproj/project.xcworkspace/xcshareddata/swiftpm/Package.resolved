@@ -1,5 +1,5 @@
 {
-  "originHash" : "877d1e90f5a25e89581b1936cf06d48d3f60cb437b5f64251d679a02713c1df6",
+  "originHash" : "955690c1a67c136248c9111cb7604ac0bac75e6c8b5b6de8f80cbe1218bde913",
   "pins" : [
     {
       "identity" : "fivekit",
@@ -17,6 +17,15 @@
       "state" : {
         "revision" : "822052178057495c6328e534cf6098d0c767c8e4",
         "version" : "1.0.7"
+      }
+    },
+    {
+      "identity" : "fuzzysearch",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/FiveSheepCo/FuzzySearch",
+      "state" : {
+        "revision" : "c120479f4cdf026e9340a55d392e133c75bea506",
+        "version" : "0.1.0"
       }
     },
     {

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		CA6C3EB22FD8350D0090FE69 /* OpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = CA6C3EB12FD8350D0090FE69 /* OpenAI */; };
+		CA6C51712FDA48F20090FE69 /* FuzzySearch in Frameworks */ = {isa = PBXBuildFile; productRef = CA6C51702FDA48F20090FE69 /* FuzzySearch */; };
 		CA8C3BE22FD76A5800DA9C92 /* MarkdownView in Frameworks */ = {isa = PBXBuildFile; productRef = CA8C3BE12FD76A5800DA9C92 /* MarkdownView */; };
 		CAA2A1BB2FCAD6E2006DAECF /* FiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = CAA2A1BA2FCAD6E2006DAECF /* FiveKit */; };
 /* End PBXBuildFile section */
@@ -59,6 +60,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CAA2A1BB2FCAD6E2006DAECF /* FiveKit in Frameworks */,
+				CA6C51712FDA48F20090FE69 /* FuzzySearch in Frameworks */,
 				CA6C3EB22FD8350D0090FE69 /* OpenAI in Frameworks */,
 				CA8C3BE22FD76A5800DA9C92 /* MarkdownView in Frameworks */,
 			);
@@ -124,6 +126,7 @@
 				CAA2A1BA2FCAD6E2006DAECF /* FiveKit */,
 				CA8C3BE12FD76A5800DA9C92 /* MarkdownView */,
 				CA6C3EB12FD8350D0090FE69 /* OpenAI */,
+				CA6C51702FDA48F20090FE69 /* FuzzySearch */,
 			);
 			productName = "Darkbloom Dashboard";
 			productReference = CAD713372FCAD54E0072280F /* DarkbloomDashboard.app */;
@@ -211,6 +214,7 @@
 				CAA2A1B92FCAD6E2006DAECF /* XCRemoteSwiftPackageReference "FiveKit" */,
 				CA8C3BE02FD76A5800DA9C92 /* XCRemoteSwiftPackageReference "MarkdownView" */,
 				CA6C3EB02FD8350D0090FE69 /* XCRemoteSwiftPackageReference "OpenAI-OpenRouter" */,
+				CA6C516F2FDA48F10090FE69 /* XCRemoteSwiftPackageReference "FuzzySearch" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = CAD713382FCAD54E0072280F /* Products */;
@@ -656,6 +660,14 @@
 				kind = branch;
 			};
 		};
+		CA6C516F2FDA48F10090FE69 /* XCRemoteSwiftPackageReference "FuzzySearch" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/FiveSheepCo/FuzzySearch";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.1.0;
+			};
+		};
 		CA8C3BE02FD76A5800DA9C92 /* XCRemoteSwiftPackageReference "MarkdownView" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/LiYanan2004/MarkdownView.git";
@@ -679,6 +691,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = CA6C3EB02FD8350D0090FE69 /* XCRemoteSwiftPackageReference "OpenAI-OpenRouter" */;
 			productName = OpenAI;
+		};
+		CA6C51702FDA48F20090FE69 /* FuzzySearch */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CA6C516F2FDA48F10090FE69 /* XCRemoteSwiftPackageReference "FuzzySearch" */;
+			productName = FuzzySearch;
 		};
 		CA8C3BE12FD76A5800DA9C92 /* MarkdownView */ = {
 			isa = XCSwiftPackageProductDependency;

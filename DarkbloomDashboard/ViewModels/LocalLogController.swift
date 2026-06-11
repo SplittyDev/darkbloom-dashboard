@@ -1,9 +1,10 @@
 #if os(macOS)
 
 import Foundation
+import FuzzySearch
 import OSLog
 
-struct DarkbloomLogEntry: Equatable, Identifiable {
+nonisolated struct DarkbloomLogEntry: Equatable, Identifiable, Sendable {
     let id: UUID
     let date: Date
     let message: String
@@ -24,6 +25,12 @@ struct DarkbloomLogEntry: Equatable, Identifiable {
         self.message = osLogEntry.composedMessage
         self.category = osLogEntry.category
         self.level = osLogEntry.level
+    }
+}
+
+extension DarkbloomLogEntry: Searchable {
+    var searchDescriptor: SearchDescriptor {
+        SearchDescriptor(message)
     }
 }
 

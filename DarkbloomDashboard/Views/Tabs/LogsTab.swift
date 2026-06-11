@@ -2,10 +2,15 @@
 
 import SwiftUI
 import FiveKit
+import FuzzySearch
 import OSLog
 
 struct LogsTab: View {
     @Environment(LocalLogController.self) private var viewModel
+    
+    @State private var searchText: String = ""
+    @State private var searchTask: Task<Void, Never>?
+    @State private var filteredLogs: [DarkbloomLogEntry]?
     
     var body: some View {
         Form {
@@ -13,14 +18,16 @@ struct LogsTab: View {
                 if viewModel.logs.isEmpty {
                     Text("Waiting for logs to come in...")
                 } else {
+                    let logs = filteredLogs ?? viewModel.logs
                     LazyVStack(alignment: .leading, spacing: 4) {
-                        IndexedForEach(viewModel.logs.sorted(by: \.date, ascending: false)) { (index, entry) in
+                        IndexedForEach(logs.sorted(by: \.date, ascending: false)) { (index, entry) in
                             if index > 0 {
                                 Divider()
                             }
                             LogEntryView(entry: entry)
                         }
                     }
+                    .animation(.interactiveSpring, value: logs)
                 }
             } header: {
                 HStack(alignment: .bottom) {
@@ -42,6 +49,18 @@ struct LogsTab: View {
             .animation(.interactiveSpring, value: viewModel.logs)
         }
         .formStyle(.grouped)
+        .searchable(text: $searchText)
+        .onChange(of: searchText) {
+            searchTask?.cancel()
+            guard !searchText.isEmpty else {
+                filteredLogs = nil
+                return
+            }
+            searchTask = Task {
+                let results = await Fuzzy().search(for: searchText, in: viewModel.logs)
+                self.filteredLogs = results.map(\.item)
+            }
+        }
         .onAppear {
             viewModel.unseenLogCount = 0
         }
