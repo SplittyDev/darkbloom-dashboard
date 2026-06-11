@@ -169,14 +169,15 @@ final class ChatViewModel {
             )
             
             for try await chunk in client.chatsStream(query: query) {
-                let delta = chunk.choices[0].delta
-                if let content = delta.reasoning {
-                    reasoningContent += content
-                    streamingMessage.reasoning = reasoningContent
-                }
-                if let content = delta.content {
-                    streamingContent += content
-                    streamingMessage.content = streamingContent
+                if let delta = chunk.choices.first?.delta {
+                    if let content = delta.reasoning {
+                        reasoningContent += content
+                        streamingMessage.reasoning = reasoningContent
+                    }
+                    if let content = delta.content {
+                        streamingContent += content
+                        streamingMessage.content = streamingContent
+                    }
                 }
                 if let usage = chunk.usage {
                     streamingMessage.usage = ChatMessageTokenUsage(
