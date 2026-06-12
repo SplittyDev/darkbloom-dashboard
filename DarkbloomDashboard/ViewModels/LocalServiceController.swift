@@ -79,7 +79,7 @@ final class LocalServiceController {
     
     private func fetchStatus() async throws -> (exists: Bool, running: Bool)? {
         guard let launchctlOutput = try? await run("/bin/launchctl", ["list"]) else { return nil }
-        let re = /(?P<pid>\d+|-)\s+(?P<status>\d+)\s+(?P<service>[\w.]+)/
+        let re = /(?P<pid>\d+|-)\s+(?P<status>-?\d+)\s+(?P<service>[\w.]+)/
         for line in launchctlOutput.split(separator: "\n") {
             guard let result = try? re.firstMatch(in: line) else { continue }
             guard result.output.service == "io.darkbloom.provider" else { continue }
