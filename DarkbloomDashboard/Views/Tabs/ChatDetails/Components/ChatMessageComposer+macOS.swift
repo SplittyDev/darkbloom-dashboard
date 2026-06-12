@@ -126,7 +126,7 @@ extension ChatDetailTab {
     }
 }
 
-#Preview {
+#Preview(traits: .controllers) {
     @Previewable @State var text: String = ""
     
     ScrollView {

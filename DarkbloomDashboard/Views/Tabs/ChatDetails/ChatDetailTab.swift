@@ -34,9 +34,9 @@ struct ChatDetailTab: View {
                 .zIndex(1)
         }
         .environment(viewModel)
-        .task {
+        .onAppear {
             guard viewModel.chatModelIsInserted else { return }
-            await viewModel.generateTitle()
+            viewModel.generateTitle()
         }
         .onDisappear {
             viewModel.savePendingChanges()

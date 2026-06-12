@@ -31,6 +31,7 @@ final class ChatViewModel {
     private(set) var streamingMessage: ChatMessageModel?
     
     private var isInserted: Bool
+    private var titleGenerationTask: Task<Void, Never>?
     
     // MARK: - Properties
     
@@ -76,48 +77,57 @@ final class ChatViewModel {
     
     // MARK: - Public API
     
-    func generateTitle() async {
-        guard chat.title == nil, let text = chat.messages.first?.content else { return }
+    func generateTitle() {
+        guard
+            let text = chat.messages.first?.content,
+            titleGenerationTask == nil && chat.title == nil
+        else {
+            return
+        }
         
-        let systemMessage = """
-        Your task is to generate a short title for a chat from the first message.
-        Keep the title short and on-point, using no more than three to four words if possible.
-        Respond with the plain text title only, and include no other text or formatting.
-        """
-        
-        let chatHistory: [ChatQuery.ChatCompletionMessageParam] = [
-            ChatQuery.ChatCompletionMessageParam(role: .system, content: systemMessage)!,
-            ChatQuery.ChatCompletionMessageParam(role: .user, content: text)!,
-        ]
-        
-        chat.isGeneratingTitle = true
-        try? context.save()
-        
-        // Find best routing, preferring tracked machines
-        let model: DarkbloomModel = .`gpt-oss-20b`
-        let idealRouting: ChatRouting = {
-            var availableFleet: [String] = []
-            for serialNo in FleetController.shared.machineSerialNumbers {
-                guard let machineInfo = APIDataController.shared.machineInfo[serialNo] else { continue }
-                if machineInfo.trust.isTrusted && machineInfo.activity.models.contains(model) {
-                    availableFleet.append(serialNo)
+        titleGenerationTask = Task {
+            let systemMessage = """
+            Your task is to generate a short title for a chat from the first message.
+            Keep the title short and on-point, using no more than three to four words if possible.
+            Respond with the plain text title only, and include no other text or formatting.
+            """
+            
+            let chatHistory: [ChatQuery.ChatCompletionMessageParam] = [
+                ChatQuery.ChatCompletionMessageParam(role: .system, content: systemMessage)!,
+                ChatQuery.ChatCompletionMessageParam(role: .user, content: text)!,
+            ]
+            
+            chat.isGeneratingTitle = true
+            try? context.save()
+            
+            // Find best routing, preferring tracked machines
+            let model: DarkbloomModel = .`gpt-oss-20b`
+            let idealRouting: ChatRouting = {
+                var availableFleet: [String] = []
+                for serialNo in FleetController.shared.machineSerialNumbers {
+                    guard let machineInfo = APIDataController.shared.machineInfo[serialNo] else { continue }
+                    if machineInfo.trust.isTrusted && machineInfo.activity.models.contains(model) {
+                        availableFleet.append(serialNo)
+                    }
                 }
-            }
-            return availableFleet.isEmpty ? .auto : .anyOf(availableFleet)
-        }()
-        
-        let query = ChatQuery(messages: chatHistory, model: model.id, providerSerial: idealRouting.resolved)
-        do {
-            let response = try await client.chats(query: query)
-            if let choice = response.choices.first {
-                chat.title = choice.message.content
+                return availableFleet.isEmpty ? .auto : .anyOf(availableFleet)
+            }()
+            
+            let query = ChatQuery(messages: chatHistory, model: model.id, providerSerial: idealRouting.resolved)
+            do {
+                let response = try await client.chats(query: query)
+                if let choice = response.choices.first {
+                    chat.title = choice.message.content
+                    chat.isGeneratingTitle = false
+                    try? context.save()
+                }
+            } catch {
+                print("Error during title generation: \(error)")
                 chat.isGeneratingTitle = false
                 try? context.save()
             }
-        } catch {
-            print("Error during title generation: \(error)")
-            chat.isGeneratingTitle = false
-            try? context.save()
+            
+            titleGenerationTask = nil
         }
     }
     
@@ -197,6 +207,9 @@ final class ChatViewModel {
             chat.messages.append(streamingMessage)
             try? context.save()
         }
+        
+        // Dispatch title generation if necessary
+        generateTitle()
         
         // Swap to chat tab if chat was just inserted
         if !wasInserted && isInserted {
