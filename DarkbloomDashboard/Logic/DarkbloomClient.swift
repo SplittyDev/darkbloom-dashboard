@@ -18,8 +18,17 @@ final class DarkbloomClient {
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         req.timeoutInterval = 10
         let (data, res) = try await URLSession.shared.data(for: req)
-        guard let httpResponse = res as? HTTPURLResponse else { throw DarkbloomAPIError.badResponse }
-        guard httpResponse.statusCode == 200 else { throw DarkbloomAPIError.badResponse }
+        guard let httpResponse = res as? HTTPURLResponse else {
+            print("Bad response for \(req.httpMethod?.uppercased() ?? "GET") \(url)")
+            throw DarkbloomAPIError.badResponse
+        }
+        guard httpResponse.statusCode == 200 else {
+            print("Status \(httpResponse.statusCode) for \(req.httpMethod?.uppercased() ?? "GET") \(url)")
+            throw switch httpResponse.statusCode {
+                case 401, 403: DarkbloomAPIError.unauthorized
+                default: DarkbloomAPIError.badResponse
+            }
+        }
         return try decoder.decode(T.self, from: data)
     }
     
