@@ -18,7 +18,8 @@ final class APIDataController {
     
     private(set) var stats: DarkbloomStats?
     private(set) var attestations: DarkbloomAttestations?
-    private(set) var balance: DarkbloomBalance?
+    // private(set) var balance: DarkbloomBalance?
+    private(set) var accountEarnings: DarkbloomAccountEarnings?
     private(set) var models: [DarkbloomModelData]?
     
     private(set) var balanceChanges: [BalanceChange] = []
@@ -244,18 +245,27 @@ final class APIDataController {
         }
     }
     
+    private func fetchAccountEarnings() async throws -> DarkbloomAccountEarnings? {
+        do {
+            return try await client?.accountEarnings()
+        } catch {
+            print(error)
+            throw error
+        }
+    }
+    
     private func refreshBalance() async throws {
         let date = Date.now
-        guard let currentBalance = try await self.fetchBalance() else { return }
-        if let previousBalance = self.balance {
-            let microUsdDiff = max(0, currentBalance.balanceMicroUsd - previousBalance.balanceMicroUsd)
+        guard let currentBalance = try await self.fetchAccountEarnings() else { return }
+        if let previousBalance = self.accountEarnings {
+            let microUsdDiff = max(0, currentBalance.totalMicroUsd - previousBalance.totalMicroUsd)
             let diff = Double(microUsdDiff) / 1_000_000.0
             if diff > 0 {
                 let change = BalanceChange(diff: diff, date: date)
                 balanceChanges.append(change)
             }
         }
-        self.balance = currentBalance
+        self.accountEarnings = currentBalance
     }
     
     private func refreshMachineInformation() {

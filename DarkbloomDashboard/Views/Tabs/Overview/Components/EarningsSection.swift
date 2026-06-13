@@ -9,18 +9,34 @@ extension OverviewTab {
             Section {
                 LabeledContent {
                     Group {
-                        if let balance = dataController.balance {
-                            Text(balance.formatted)
+                        if let earnings = dataController.accountEarnings {
+                            Text(MicroUSD.format(earnings.availableBalanceMicroUsd))
                                 .foregroundStyle(.primary)
                                 .privacySensitive()
                         } else {
-                            ProgressView()
-                                .controlSize(.small)
+                            Text(MicroUSD.format(MicroUSD.fromUsd(10.0)))
+                                .redacted(reason: .placeholder)
                         }
                     }
                     .transition(.opacity)
                 } label: {
                     Text("Account Balance")
+                }
+                
+                LabeledContent {
+                    Group {
+                        if let earnings = dataController.accountEarnings {
+                            Text(MicroUSD.format(earnings.withdrawableBalanceMicroUsd))
+                                .foregroundStyle(.primary)
+                                .privacySensitive()
+                        } else {
+                            Text(MicroUSD.format(MicroUSD.fromUsd(10.0)))
+                                .redacted(reason: .placeholder)
+                        }
+                    }
+                    .transition(.opacity)
+                } label: {
+                    Text("Withdrawable Balance")
                 }
                 
                 if let projectedEarnings = earningsController.projectedEarnings {
@@ -36,7 +52,7 @@ extension OverviewTab {
             } header: {
                 Label("Finances", systemImage: "dollarsign.gauge.chart.leftthird.topthird.rightthird")
             }
-            .animation(.default, value: dataController.balance)
+            .animation(.default, value: dataController.accountEarnings)
             .animation(.default, value: earningsController.projectedEarnings)
         }
     }

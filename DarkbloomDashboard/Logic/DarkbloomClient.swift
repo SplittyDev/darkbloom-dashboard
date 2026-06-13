@@ -2,10 +2,6 @@ import Foundation
 
 private let HOST: URL = URL(string: "https://api.darkbloom.dev/v1")!
 
-enum DarkbloomError: Error {
-    case badResponse
-}
-
 final class DarkbloomClient {
     let apiKey: String
     let decoder: JSONDecoder
@@ -22,10 +18,12 @@ final class DarkbloomClient {
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         req.timeoutInterval = 10
         let (data, res) = try await URLSession.shared.data(for: req)
-        guard let httpResponse = res as? HTTPURLResponse else { throw DarkbloomError.badResponse }
-        guard httpResponse.statusCode == 200 else { throw DarkbloomError.badResponse }
+        guard let httpResponse = res as? HTTPURLResponse else { throw DarkbloomAPIError.badResponse }
+        guard httpResponse.statusCode == 200 else { throw DarkbloomAPIError.badResponse }
         return try decoder.decode(T.self, from: data)
     }
+    
+    // MARK: Documented API
     
     func stats() async throws -> DarkbloomStats {
         let url = HOST.appending(path: "stats")
@@ -46,6 +44,15 @@ final class DarkbloomClient {
         let url = HOST.appending(path: "models")
         return try await fetch(url)
     }
+    
+    // MARK: Undocumented API
+    
+    func accountEarnings() async throws -> DarkbloomAccountEarnings {
+        let url = HOST.appending(path: "provider/account-earnings")
+        return try await fetch(url)
+    }
+    
+    // MARK: Helpers
     
     func warmupMachine(serialNumber: String, models: [String]) async throws {
         for model in models {
