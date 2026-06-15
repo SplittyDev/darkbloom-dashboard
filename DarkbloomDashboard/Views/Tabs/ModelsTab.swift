@@ -69,13 +69,15 @@ struct ModelsTab: View {
                     HStack {
                         Text(model.metadata.displayName)
                         Spacer()
-                        Link(destination: huggingFaceSearchUrl(for: model.huggingFaceId)) {
-                            Image("huggingface")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 16, height: 16)
+                        if let huggingFaceId = model.huggingFaceId {
+                            Link(destination: huggingFaceSearchUrl(for: huggingFaceId)) {
+                                Image("huggingface")
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 16, height: 16)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }

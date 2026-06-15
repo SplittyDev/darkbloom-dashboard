@@ -8,8 +8,8 @@ struct DarkbloomModelData: Decodable, Identifiable {
     let ownedBy: String
     
     let name: String
-    let description: String
-    let huggingFaceId: String
+    let description: String?
+    let huggingFaceId: String?
     let metadata: DarkbloomModelMetadata
     
     let contextLength: Int
@@ -17,7 +17,10 @@ struct DarkbloomModelData: Decodable, Identifiable {
     
     let inputModalities: [DarkbloomInputModality]
     let outputModalities: [DarkbloomOutputModality]
-    let supportedSamplingParameters: [String]
+    
+    let supportedFeatures: [String]?
+    let supportedSamplingParameters: [String]?
+    
     let pricing: DarkbloomModelPricing
     
     var model: DarkbloomModel {

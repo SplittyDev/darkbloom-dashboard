@@ -4,4 +4,5 @@ enum DarkbloomInputModality: String, Decodable {
     case text = "text"
     case image = "image"
     case audio = "audio"
+    case video = "video"
 }
