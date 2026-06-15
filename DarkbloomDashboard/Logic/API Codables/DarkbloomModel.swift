@@ -16,18 +16,26 @@ nonisolated extension DarkbloomModel: Identifiable {
     }
 }
 
+nonisolated extension DarkbloomModel: CaseIterable {
+    static var allCases: [DarkbloomModel] {
+        [
+            .`gemma-4-26b`,
+            .`gemma-4-26b-8bit`,
+            .`gemma-4-26b-qat-4bit`,
+            .`gpt-oss-20b`,
+            .`legacy-gemma-4-26b-a4b-it-8bit`,
+            .`legacy-qwen3.5-122b-a10b-8bit`,
+        ]
+    }
+}
+
 nonisolated extension DarkbloomModel: RawRepresentable<String> {
     init(rawValue: String) {
-        self = switch rawValue {
-            // Current models
-            case "gemma-4-26b": .`gemma-4-26b`
-            case "gpt-oss-20b": .`gpt-oss-20b`
-            // Legacy models
-            case "mlx-community/gemma-4-26b-a4b-it-8bit": .`legacy-gemma-4-26b-a4b-it-8bit`
-            case "mlx-community/Qwen3.5-122B-A10B-8bit": .`legacy-qwen3.5-122b-a10b-8bit`
-            // Unknown models
-            case let other: .unknown(other)
+        for model in Self.allCases where model.rawValue == rawValue {
+            self = model
+            return
         }
+        self = .unknown(rawValue)
     }
     
     var rawValue: String {
