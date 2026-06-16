@@ -305,7 +305,10 @@ extension NetworkTab.TrafficFlowSection {
                 },
                 label: {
                     VStack(alignment: .leading) {
-                        Text("\(location.city), \(location.regionCode), \(location.countryCode)").bold()
+                        let regionComponents: [String] = [
+                            location.city, location.regionCode, location.countryCode
+                        ].compactMap(\.self)
+                        Text(regionComponents.joined(separator: ", ")).bold()
                         Text("\(location.providers) requests")
                     }
                 }
