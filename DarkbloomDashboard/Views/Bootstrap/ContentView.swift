@@ -48,7 +48,6 @@ struct ContentView: View {
                 Migrator(modelContext: modelContext).run()
             }
             .onChange(of: accountBalances) {
-                print("Balances: \(accountBalances.count)")
                 earningsController.calculateProjections(basedOn: accountBalances)
             }
             .onChange(of: machines, initial: true) {
