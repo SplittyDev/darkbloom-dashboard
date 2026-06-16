@@ -8,24 +8,36 @@ struct MachineDetailTab: View {
     
     let machine: MachineModel
     
+    @ViewBuilder private var providerIdSection: some View {
+        Section {
+            LabeledContent {
+                if let providerId = machine.currentInfo?.providerId {
+                    Text(providerId)
+                        .privacySensitive()
+                } else {
+                    Text("00000000-0000-0000-0000-000000000000")
+                        .redacted(reason: .placeholder)
+                }
+            } label: {
+                Text("Provider ID")
+            }
+        }
+    }
+    
     var body: some View {
         Form {
+            providerIdSection
+            MonitoringSection(machine: machine)
+            
             if let info = machine.currentInfo ?? lastMachineInfo {
-                Section {
-                    LabeledContent {
-                        Text(info.providerId)
-                            .privacySensitive()
-                    } label: {
-                        Text("Provider ID")
-                    }
-                }
-                MonitoringSection(machine: machine)
                 HardwareSection(hardware: info.hardware)
+                
                 #if os(macOS)
                 TrustSection(trust: info.trust, showAll: true)
                 #else
                 TrustSection(trust: info.trust, showAll: false)
                 #endif
+                
                 NetworkSection(serialNo: machine.serialNo, activity: info.activity)
             }
         }
