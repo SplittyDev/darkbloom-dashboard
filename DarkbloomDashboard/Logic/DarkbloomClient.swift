@@ -64,6 +64,7 @@ final class DarkbloomClient {
     // MARK: Helpers
     
     func warmupMachine(serialNumber: String, models: [String]) async throws {
+        let ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15"
         for model in models {
             let url = HOST
                 .appending(path: "chat/completions")
@@ -72,6 +73,9 @@ final class DarkbloomClient {
             req.httpMethod = "POST"
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
             req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            req.setValue(ua, forHTTPHeaderField: "User-Agent")
+            req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+            req.setValue("self", forHTTPHeaderField: "X-Darkbloom-Route")
             req.httpBody = """
             {
                 "model": "\(model)",
@@ -86,6 +90,9 @@ final class DarkbloomClient {
             let (data, res) = try await URLSession.shared.data(for: req)
             if let httpResponse = res as? HTTPURLResponse {
                 print("-> Response: HTTP \(httpResponse.statusCode)")
+                if let respSerial = httpResponse.value(forHTTPHeaderField: "x-provider-serial") {
+                    print("-> SerialNo: \(respSerial) (matches: \(respSerial == serialNumber ? "true" : "false"))")
+                }
             } else {
                 print("-> Error: Response is not HTTP")
             }
