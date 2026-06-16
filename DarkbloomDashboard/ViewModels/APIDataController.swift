@@ -1,10 +1,6 @@
 import Foundation
+import SwiftData
 import FiveKit
-
-struct BalanceChange: Equatable {
-    let diff: Double
-    let date: Date
-}
 
 @MainActor @Observable
 final class APIDataController {
@@ -19,10 +15,14 @@ final class APIDataController {
     private(set) var stats: DarkbloomStats?
     private(set) var attestations: DarkbloomAttestations?
     // private(set) var balance: DarkbloomBalance?
-    private(set) var accountEarnings: DarkbloomAccountEarnings?
+    private(set) var accountEarnings: DarkbloomAccountEarnings? {
+        didSet {
+            guard let accountEarnings else { return }
+            let model = AccountBalanceModel(from: accountEarnings)
+            SwiftDataUtils.activeModelContainer.mainContext.insert(model)
+        }
+    }
     private(set) var models: [DarkbloomModelData]?
-    
-    private(set) var balanceChanges: [BalanceChange] = []
     private(set) var machineInfo: [String: MachineInfo] = [:]
     
     private(set) var lastStatUpdate: Date?
@@ -255,14 +255,13 @@ final class APIDataController {
     }
     
     private func refreshBalance() async throws {
-        let date = Date.now
         guard let currentBalance = try await self.fetchAccountEarnings() else { return }
         if let previousBalance = self.accountEarnings {
             let microUsdDiff = max(0, currentBalance.totalMicroUsd - previousBalance.totalMicroUsd)
-            let diff = Double(microUsdDiff) / 1_000_000.0
-            if diff > 0 {
-                let change = BalanceChange(diff: diff, date: date)
-                balanceChanges.append(change)
+            
+            // Do not update state if diff is 0
+            if microUsdDiff == 0 {
+                return
             }
         }
         self.accountEarnings = currentBalance

@@ -5,6 +5,7 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     
     @Query(sort: \MachineModel.serialNo) private var machines: [MachineModel]
+    @Query(sort: \AccountBalanceModel.createdAt) private var accountBalances: [AccountBalanceModel]
     
     private let dataController = APIDataController.shared
     private let fleetController = FleetController.shared
@@ -46,8 +47,9 @@ struct ContentView: View {
             .onAppear {
                 Migrator(modelContext: modelContext).run()
             }
-            .task(id: dataController.balanceChanges) {
-                await earningsController.calculateProjections(basedOn: dataController.balanceChanges)
+            .onChange(of: accountBalances) {
+                print("Balances: \(accountBalances.count)")
+                earningsController.calculateProjections(basedOn: accountBalances)
             }
             .onChange(of: machines, initial: true) {
                 fleetController.updateMachines(machines)

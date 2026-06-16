@@ -39,13 +39,14 @@ extension OverviewTab {
                     Text("Withdrawable Balance")
                 }
                 
-                if let projectedEarnings = earningsController.projectedEarnings {
-                    let value1m = projectedEarnings.projectedEarningsPerMonth.formatted(.currency(code: "USD"))
+                if let projectedEarnings = earningsController.projectedEarnings,
+                   let monthlyProjection = projectedEarnings.weightedMonthlyProjection {
+                    let value1m = monthlyProjection.formatted(.currency(code: "USD"))
                     LabeledContent {
                         Text("\(value1m) / month")
                             .privacySensitive()
                     } label: {
-                        Text("Projected Earnings")
+                        Text("Estimated Earnings")
                     }
                     .transition(.opacity)
                 }

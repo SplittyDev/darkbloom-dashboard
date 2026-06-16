@@ -6,6 +6,7 @@ enum SwiftDataUtils {
         ChatModel.self,
         ChatMessageModel.self,
         MachineModel.self,
+        AccountBalanceModel.self,
     ])
     
     static var activeModelContainer: ModelContainer {
