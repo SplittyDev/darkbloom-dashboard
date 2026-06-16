@@ -14,6 +14,11 @@ struct MachineDetailTab: View {
                 if let providerId = machine.currentInfo?.providerId {
                     Text(providerId)
                         .privacySensitive()
+                        .textSelection(.disabled)
+                        .contentShape(.rect)
+                        .contextMenu {
+                            CopyButton(value: providerId)
+                        }
                 } else {
                     Text("00000000-0000-0000-0000-000000000000")
                         .redacted(reason: .placeholder)
