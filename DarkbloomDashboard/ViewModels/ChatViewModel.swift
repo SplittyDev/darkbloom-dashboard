@@ -39,12 +39,13 @@ final class ChatViewModel {
         isInserted
     }
     
-    private var client: OpenAI {
+    private func client(for routing: ChatRouting) -> OpenAI {
         let config = OpenAI.Configuration(
             token: Settings.shared.apiKey,
             host: "api.darkbloom.dev",
             scheme: "https",
             basePath: "/v1",
+            customHeaders: routing.headers,
             parsingOptions: .relaxed
         )
         return OpenAI(configuration: config)
@@ -100,22 +101,10 @@ final class ChatViewModel {
             chat.isGeneratingTitle = true
             try? context.save()
             
-            // Find best routing, preferring tracked machines
             let model: DarkbloomModel = .`gpt-oss-20b`
-            let idealRouting: ChatRouting = {
-                var availableFleet: [String] = []
-                for serialNo in FleetController.shared.machineSerialNumbers {
-                    guard let machineInfo = APIDataController.shared.machineInfo[serialNo] else { continue }
-                    if machineInfo.trust.isTrusted && machineInfo.activity.models.contains(model) {
-                        availableFleet.append(serialNo)
-                    }
-                }
-                return availableFleet.isEmpty ? .auto : .anyOf(availableFleet)
-            }()
-            
-            let query = ChatQuery(messages: chatHistory, model: model.id, providerSerial: idealRouting.resolved)
+            let query = ChatQuery(messages: chatHistory, model: model.id)
             do {
-                let response = try await client.chats(query: query)
+                let response = try await client(for: .preferFleet).chats(query: query)
                 if let choice = response.choices.first {
                     chat.title = choice.message.content
                     chat.isGeneratingTitle = false
@@ -175,10 +164,10 @@ final class ChatViewModel {
             let query = ChatQuery(
                 messages: chatHistory,
                 model: chat.model.rawValue,
-                providerSerial: chat.routing.resolved
+                providerSerial: chat.routing.resolvedWithHeaders
             )
             
-            for try await chunk in client.chatsStream(query: query) {
+            for try await chunk in client(for: chat.routing).chatsStream(query: query) {
                 if let delta = chunk.choices.first?.delta {
                     if let content = delta.reasoning {
                         reasoningContent += content

@@ -143,17 +143,30 @@ extension ChatDetailTab {
                         }
                     }
                 }
+                Divider()
+                Button {
+                    viewModel.chat.routing = .preferFleet
+                } label: {
+                    Label {
+                        Text("My Fleet (Prefer)")
+                    } icon: {
+                        if case .preferFleet = viewModel.chat.routing {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
                 Button {
                     viewModel.chat.routing = .anyFleet
                 } label: {
                     Label {
-                        Text("Any Fleet Member")
+                        Text("My Fleet (Enforce)")
                     } icon: {
                         if case .anyFleet = viewModel.chat.routing {
                             Image(systemName: "checkmark")
                         }
                     }
                 }
+                Divider()
                 ForEach(fleetController.machineSerialNumbers) { serialNo in
                     Button {
                         viewModel.chat.routing = .only(serialNo)
@@ -178,8 +191,9 @@ extension ChatDetailTab {
                     let value: String = {
                         switch viewModel.chat.routing {
                             case .auto: return "Auto"
-                            case .anyFleet: return "Fleet"
-                            case .anyOf: return "Fleet Set"
+                            case .anyFleet: return "Enforce Fleet"
+                            case .preferFleet: return "Prefer Fleet"
+                            case .anyOf: return "Custom"
                             case .only(let serialNo):
                                 let displaySerialNo = redactionReasons.contains(.privacy) ? "hidden" : serialNo
                                 if let resolvedMachine = dataController.machineInfo[serialNo] {

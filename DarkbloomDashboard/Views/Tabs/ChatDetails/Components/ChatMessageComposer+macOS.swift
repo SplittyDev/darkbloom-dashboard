@@ -106,7 +106,9 @@ extension ChatDetailTab {
             Picker(selection: $viewModel.chat.routing) {
                 Text("Auto Routing").tag(ChatRouting.auto)
                 Divider()
-                Text("Any Fleet Member").tag(ChatRouting.anyFleet)
+                Text("My Fleet (Prefer)").tag(ChatRouting.preferFleet)
+                Text("My Fleet (Enforce)").tag(ChatRouting.anyFleet)
+                Divider()
                 ForEach(fleetController.machineSerialNumbers) { serialNo in
                     let displaySerialNo = redactionReasons.contains(.privacy) ? "hidden" : serialNo
                     if let resolvedMachine = dataController.machineInfo[serialNo] {
