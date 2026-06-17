@@ -5,11 +5,16 @@ extension MachineDetailTab {
     
     @MainActor @Observable
     final class MonitoringViewModel {
+        private static var cache: [String: MonitoringViewModel] = [:]
+        
         private let restartController = RestartController.shared
         
         var restartTask: RestartTask?
+
+        private init() {}
         
-        init() {
+        static func get(for machine: MachineModel) -> MonitoringViewModel {
+            return cache.get(machine.serialNo, elseInsert: MonitoringViewModel())
         }
         
         func restartProvider(machine: MachineModel) {
@@ -25,13 +30,14 @@ extension MachineDetailTab {
     }
     
     struct MonitoringSection: View {
-        @State private var viewModel = MonitoringViewModel()
-        
         private let settings = Settings.shared
+        
         private let machine: MachineModel
+        private let viewModel: MonitoringViewModel
         
         init(machine: MachineModel) {
             self.machine = machine
+            self.viewModel = MonitoringViewModel.get(for: machine)
         }
         
         #if os(macOS)
