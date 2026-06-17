@@ -3,24 +3,6 @@
 import Foundation
 import IOKit
 
-struct MachineRestartTarget: Codable, Equatable, Identifiable {
-    var id: String { serialNumber }
-
-    let serialNumber: String
-    var user: String
-    var host: String
-
-    var sshRestartArguments: [String] {
-        [
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=10",
-            "-o", "StrictHostKeyChecking=accept-new",
-            "\(user)@\(host)",
-            "~/.darkbloom/bin/darkbloom stop; sleep 2; ~/.darkbloom/bin/darkbloom start --all"
-        ]
-    }
-}
-
 @MainActor @Observable
 final class LocalServiceController {
     static let shared = LocalServiceController()

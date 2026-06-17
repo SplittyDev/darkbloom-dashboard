@@ -39,37 +39,6 @@ struct Darkbloom_DashboardTests {
             "Runtime verification failed"
         ])
     }
-
-    #if os(macOS)
-    @Test func remoteRestartTargetCanRoundTripThroughJson() async throws {
-        let target = MachineRestartTarget(
-            serialNumber: "SERIAL123",
-            user: "provider",
-            host: "lab-mac.tailnet.example"
-        )
-
-        let data = try JSONEncoder().encode(["SERIAL123": target])
-        let decoded = try JSONDecoder().decode([String: MachineRestartTarget].self, from: data)
-
-        #expect(decoded["SERIAL123"] == target)
-    }
-
-    @Test func remoteRestartArgumentsUseBatchModeSsh() async throws {
-        let target = MachineRestartTarget(
-            serialNumber: "SERIAL123",
-            user: "provider",
-            host: "lab-mac.tailnet.example"
-        )
-
-        #expect(target.sshRestartArguments == [
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=10",
-            "-o", "StrictHostKeyChecking=accept-new",
-            "provider@lab-mac.tailnet.example",
-            "~/.darkbloom/bin/darkbloom stop; sleep 2; ~/.darkbloom/bin/darkbloom start --all"
-        ])
-    }
-    #endif
 }
 
 private extension MachineTrustInfo {
