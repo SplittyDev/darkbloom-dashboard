@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated enum MicroUSD {
+enum MicroUSD {
     
     @inlinable
     static func fromUsd(_ value: Double) -> Int {

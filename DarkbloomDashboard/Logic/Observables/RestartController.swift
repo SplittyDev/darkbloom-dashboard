@@ -4,7 +4,7 @@ import Citadel
 import NIOCore
 import NIOFoundationEssentialsCompat
 
-@Observable
+@MainActor @Observable
 final class RestartTask {
     let machine: MachineModel
     var task: Task<Void, Never>?
@@ -39,7 +39,7 @@ final class RestartTask {
     }
 }
 
-private nonisolated final class SSHClientBox: @unchecked Sendable {
+private final class SSHClientBox: @unchecked Sendable {
     let client: SSHClient
 
     init(_ client: SSHClient) {
@@ -64,7 +64,7 @@ private actor SSHClientHolder {
     }
 }
 
-@Observable
+@MainActor @Observable
 final class RestartSubtask: Identifiable, Equatable {
     let id: UUID = UUID()
     let startDate: Date
@@ -141,7 +141,7 @@ enum RestartError: Error {
     case unsupportedOnCurrentOS
 }
 
-@Observable
+@MainActor @Observable
 final class RestartController {
     static let shared = RestartController()
     

@@ -4,7 +4,7 @@ import Foundation
 import FuzzySearch
 import OSLog
 
-nonisolated struct DarkbloomLogEntry: Equatable, Identifiable, Sendable {
+struct DarkbloomLogEntry: Equatable, Identifiable, Sendable {
     let id: UUID
     let date: Date
     let message: String
@@ -28,7 +28,7 @@ nonisolated struct DarkbloomLogEntry: Equatable, Identifiable, Sendable {
     }
 }
 
-nonisolated extension DarkbloomLogEntry: Searchable {
+extension DarkbloomLogEntry: Searchable {
     var searchDescriptor: SearchDescriptor {
         SearchDescriptor(message)
     }

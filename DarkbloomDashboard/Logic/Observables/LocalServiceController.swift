@@ -58,7 +58,7 @@ final class LocalServiceController {
     }
     
     private func getSerialNumber() -> String? {
-        let platformExpert = IOServiceGetMatchingService(
+        let platformExpert = unsafe IOServiceGetMatchingService(
             kIOMainPortDefault,
             IOServiceMatching("IOPlatformExpertDevice")
         )
@@ -66,7 +66,7 @@ final class LocalServiceController {
         defer {
             IOObjectRelease(platformExpert)
         }
-        guard let serial = IORegistryEntryCreateCFProperty(
+        guard let serial = unsafe IORegistryEntryCreateCFProperty(
             platformExpert,
             "IOPlatformSerialNumber" as CFString,
             kCFAllocatorDefault,

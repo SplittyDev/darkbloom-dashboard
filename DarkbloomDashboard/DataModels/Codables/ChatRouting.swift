@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated enum ChatRouting: CodableData, Hashable {
+enum ChatRouting: CodableData, Hashable {
     case auto
     case anyFleet
     case preferFleet
@@ -8,9 +8,9 @@ nonisolated enum ChatRouting: CodableData, Hashable {
     case only(String)
 }
 
+@MainActor
 extension ChatRouting {
     
-    @MainActor
     var resolved: [String]? {
         switch self {
             case .auto: nil
@@ -21,7 +21,6 @@ extension ChatRouting {
         }
     }
     
-    @MainActor
     var resolvedWithHeaders: [String]? {
         switch self {
             case .auto: nil
@@ -32,7 +31,6 @@ extension ChatRouting {
         }
     }
     
-    @MainActor
     var headers: [String: String] {
         switch self {
             case .auto:

@@ -1,9 +1,9 @@
 import Foundation
 
-nonisolated protocol CodableData: Codable {
+protocol CodableData: Codable {
 }
 
-nonisolated extension CodableData {
+extension CodableData {
     var data: Data? {
         try? JSONEncoder().encode(self)
     }

@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 
+@MainActor
 final class Migrator {
     private let settings = Settings.shared
     

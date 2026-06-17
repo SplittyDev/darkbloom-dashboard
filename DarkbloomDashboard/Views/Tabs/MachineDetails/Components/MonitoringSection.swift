@@ -3,7 +3,7 @@ import FiveKit
 
 extension MachineDetailTab {
     
-    @Observable
+    @MainActor @Observable
     final class MonitoringViewModel {
         private let restartController = RestartController.shared
         

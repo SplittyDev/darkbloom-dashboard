@@ -1,7 +1,7 @@
 import Foundation
 import OpenAI
 
-nonisolated enum ChatMessageRole: String, Sendable {
+enum ChatMessageRole: String, Sendable {
     case system = "system"
     case assistant = "assistant"
     case developer = "developer"
@@ -9,7 +9,7 @@ nonisolated enum ChatMessageRole: String, Sendable {
     case tool = "tool"
 }
 
-nonisolated extension ChatMessageRole {
+extension ChatMessageRole {
     
     init(from role: OpenAI::ChatQuery.ChatCompletionMessageParam.Role) {
         self.init(rawValue: role.rawValue)!

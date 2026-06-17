@@ -2,13 +2,13 @@ import Foundation
 import CryptoKit
 import Citadel
 
-nonisolated struct SSHConnectionInfo: CodableData {
+struct SSHConnectionInfo: CodableData {
     var user: String
     var host: String
     var passwordKeychainId: String?
 }
 
-nonisolated extension SSHConnectionInfo {
+extension SSHConnectionInfo {
     
     var sshClientSettings: SSHClientSettings {
         SSHClientSettings(

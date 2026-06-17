@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated enum DarkbloomModel: Equatable, Hashable {
+enum DarkbloomModel: Equatable, Hashable {
     case `gemma-4-26b`
     case `gemma-4-26b-8bit`
     case `gemma-4-26b-qat-4bit`
@@ -10,13 +10,13 @@ nonisolated enum DarkbloomModel: Equatable, Hashable {
     case unknown(String)
 }
 
-nonisolated extension DarkbloomModel: Identifiable {
+extension DarkbloomModel: Identifiable {
     var id: String {
         rawValue
     }
 }
 
-nonisolated extension DarkbloomModel: CaseIterable {
+extension DarkbloomModel: CaseIterable {
     static var allCases: [DarkbloomModel] {
         [
             .`gemma-4-26b`,
@@ -29,7 +29,7 @@ nonisolated extension DarkbloomModel: CaseIterable {
     }
 }
 
-nonisolated extension DarkbloomModel: RawRepresentable<String> {
+extension DarkbloomModel: RawRepresentable<String> {
     init(rawValue: String) {
         for model in Self.allCases where model.rawValue == rawValue {
             self = model
@@ -51,7 +51,7 @@ nonisolated extension DarkbloomModel: RawRepresentable<String> {
     }
 }
 
-nonisolated extension DarkbloomModel: Decodable {
+extension DarkbloomModel: Decodable {
     init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
         let modelName = try container.decode(String.self)
@@ -59,7 +59,7 @@ nonisolated extension DarkbloomModel: Decodable {
     }
 }
 
-nonisolated extension DarkbloomModel {
+extension DarkbloomModel {
     static var recommendedCases: [DarkbloomModel] {
         [.`gemma-4-26b`, .`gpt-oss-20b`]
     }
