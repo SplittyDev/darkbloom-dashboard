@@ -139,21 +139,28 @@ extension MachineDetailTab {
         
         var body: some View {
             Section {
-                LabeledContent {
-                    if localServiceController.processIsRunning == true {
-                        Text("Running")
-                    } else {
-                        Text("Stopped")
+                if let version = localServiceController.darkbloomVersion {
+                    LabeledContent {
+                        Text(version)
+                    } label: {
+                        Text("Version")
                     }
-                } label: {
-                    Text("Service Status")
                 }
                 
                 if let restartTask = viewModel.restartTask {
                     RestartStatusView(restartTask: restartTask)
                 }
             } header: {
-                Text("Local Service")
+                HStack {
+                    Text("Local Service")
+                    Spacer()
+                    if let isRunning = localServiceController.processIsRunning {
+                        Text(isRunning ? "Running" : "Stopped")
+                            .foregroundStyle(isRunning ? Color.secondary : Color.red)
+                    } else {
+                        ProgressView().controlSize(.small)
+                    }
+                }
             } footer: {
                 HStack {
                     Spacer()

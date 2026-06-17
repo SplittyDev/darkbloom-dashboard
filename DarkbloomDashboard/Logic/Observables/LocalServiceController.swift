@@ -26,11 +26,13 @@ final class LocalServiceController {
     static let shared = LocalServiceController()
     
     private var launchctlTask: Task<Void, Never>?
+    private var versionTask: Task<Void, Never>?
     
     private(set) var processExists: Bool = false
     private(set) var processIsRunning: Bool?
     
     private(set) var currentMachineSerialNumber: String?
+    private(set) var darkbloomVersion: String?
     
     private init() {
     }
@@ -50,11 +52,26 @@ final class LocalServiceController {
                 try? await Task.sleep(for: .seconds(5))
             }
         }
+        
+        if let location = try? fetchDarkbloomLocation() {
+            versionTask?.cancel()
+            versionTask = Task {
+                while !Task.isCancelled {
+                    if let version = try? await getVersion(at: location) {
+                        self.darkbloomVersion = version
+                    }
+                    try? await Task.sleep(for: .seconds(30))
+                }
+            }
+        }
     }
     
     func stopObservation() {
         launchctlTask?.cancel()
+        versionTask?.cancel()
+        
         launchctlTask = nil
+        versionTask = nil
     }
     
     private func getSerialNumber() -> String? {
@@ -119,6 +136,10 @@ final class LocalServiceController {
         print("Starting darkbloom...")
         let startOutput = try await run(path, ["start", "--all"])
         print("-> \(startOutput)")
+    }
+    
+    func getVersion(at path: String) async throws -> String {
+        return try await run(path, ["--version"]).trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     @concurrent private func run(_ executable: String, _ arguments: [String]) async throws -> String {

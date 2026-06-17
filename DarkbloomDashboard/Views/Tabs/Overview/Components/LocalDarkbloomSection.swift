@@ -6,27 +6,29 @@ import FiveKit
 extension OverviewTab {
     struct LocalDarkbloomSection: View {
         @Environment(APIDataController.self) private var dataController
-        
-        let localServiceController: LocalServiceController
+        @Environment(LocalServiceController.self) private var localServiceController
         
         private let settings = Settings.shared
         
         var body: some View {
             Section {
-                LabeledContent {
+                if let version = localServiceController.darkbloomVersion {
+                    LabeledContent {
+                        Text(version)
+                    } label: {
+                        Text("Version")
+                    }
+                }
+            } header: {
+                HStack(alignment: .bottom) {
+                    Label("Local Service", systemImage: "apple.terminal")
+                    Spacer()
                     if let isRunning = localServiceController.processIsRunning {
                         Text(isRunning ? "Running" : "Stopped")
+                            .foregroundStyle(isRunning ? Color.secondary : Color.red)
                     } else {
                         ProgressView().controlSize(.small)
                     }
-                } label: {
-                    Text("Process Status")
-                }
-                .animation(.interactiveSpring, value: localServiceController.processIsRunning)
-            } header: {
-                HStack(alignment: .bottom) {
-                    Label("Darkbloom Process", systemImage: "apple.terminal")
-                    Spacer()
                 }
             }
         }
