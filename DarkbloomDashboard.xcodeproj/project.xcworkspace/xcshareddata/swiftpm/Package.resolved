@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/FiveSheepCo/FuzzySearch",
       "state" : {
-        "revision" : "c120479f4cdf026e9340a55d392e133c75bea506",
-        "version" : "0.1.0"
+        "revision" : "82882fb41df51793aa3f05f0213d6aef89ac9b1d",
+        "version" : "0.2.0"
       }
     },
     {
