@@ -4,6 +4,7 @@ enum UserDefaultKey: String {
     case apiKey = "darkbloom_api_key"
     
     enum Migration: String {
+        case legacySwiftDataStore = "migration.legacy_data_store"
         case legacyChatsToStableIdentifiers = "migration.chat_stable_ids"
         case fleetToSwiftData = "migration.fleet_to_swift_data"
     }
@@ -26,6 +27,15 @@ final class Settings {
     }
     
     // MARK: Migrations
+    
+    var migratedLegacySwiftDataStore: Bool {
+        didSet {
+            defaults.set(
+                migratedLegacySwiftDataStore,
+                forKey: UserDefaultKey.Migration.legacySwiftDataStore.rawValue
+            )
+        }
+    }
     
     var migratedLegacyChatsToStableIdentifiers: Bool {
         didSet {
@@ -60,6 +70,10 @@ final class Settings {
     
     private init() {
         self.apiKey = defaults.string(forKey: UserDefaultKey.apiKey.rawValue)
+        
+        self.migratedLegacySwiftDataStore = defaults.bool(
+            forKey: UserDefaultKey.Migration.legacySwiftDataStore.rawValue
+        )
         
         self.migratedLegacyChatsToStableIdentifiers = defaults.bool(
             forKey: UserDefaultKey.Migration.legacyChatsToStableIdentifiers.rawValue

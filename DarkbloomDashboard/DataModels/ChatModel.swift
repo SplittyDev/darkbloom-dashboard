@@ -33,9 +33,9 @@ final class ChatModel {
         set { _routing = newValue.data }
     }
     
-    init() {
+    init(stableId: UUID? = nil) {
         let now = Date.now
-        self._stableId = UUID().uuidString
+        self._stableId = stableId?.uuidString ?? UUID().uuidString
         self.createdAt = now
         self.updatedAt = now
     }
