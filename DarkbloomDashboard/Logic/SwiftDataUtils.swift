@@ -19,9 +19,21 @@ enum SwiftDataUtils {
     }
     
     private static var sharedModelContainer: ModelContainer = {
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
         do {
+            #if os(macOS)
+            let storeURL: URL = try {
+                let appSupportURL = FileManager.default.urls(
+                    for: .applicationSupportDirectory,
+                    in: .userDomainMask
+                ).first!
+                let appDirectory = appSupportURL.appendingPathComponent(Bundle.main.bundleIdentifier!, isDirectory: true)
+                try FileManager.default.createDirectory(at: appDirectory, withIntermediateDirectories: true)
+                return appDirectory.appendingPathComponent("default.store")
+            }()
+            let modelConfiguration = ModelConfiguration(schema: schema, url: storeURL)
+            #else
+            let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+            #endif
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
@@ -29,9 +41,8 @@ enum SwiftDataUtils {
     }()
     
     private static var previewModelContainer: ModelContainer = {
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-
         do {
+            let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
