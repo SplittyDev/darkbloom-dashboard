@@ -11,8 +11,11 @@ final class MachineModel {
         set { _sshConnectionInfo = newValue?.data }
     }
     
-    init(serialNo: String) {
+    var autoWarmup: Bool = false
+    
+    init(serialNo: String, autoWarmup: Bool = false) {
         self.serialNo = serialNo
+        self.autoWarmup = autoWarmup
     }
 }
 

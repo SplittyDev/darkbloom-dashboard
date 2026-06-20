@@ -43,7 +43,7 @@ struct MachineDetailTab: View {
                 TrustSection(trust: info.trust, showAll: false)
                 #endif
                 
-                NetworkSection(serialNo: machine.serialNo, activity: info.activity)
+                NetworkSection(machine: machine, activity: info.activity)
             }
         }
         .formStyle(.grouped)

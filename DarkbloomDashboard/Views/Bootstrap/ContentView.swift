@@ -17,6 +17,7 @@ struct ContentView: View {
     private let loadTestingController = LoadTestingController.shared
     private let localLogController = LocalLogController.shared
     private let restartController = RestartController.shared
+    private let warmupCoordinator = WarmupCoordinator.shared
     #endif
     
     private let settings = Settings.shared
@@ -29,6 +30,7 @@ struct ContentView: View {
                 .environment(loadTestingController)
                 .environment(localLogController)
                 .environment(restartController)
+                .environment(warmupCoordinator)
             #elseif os(iOS)
             ContentView_iOS()
             #else
@@ -52,7 +54,15 @@ struct ContentView: View {
             }
             .onChange(of: machines, initial: true) {
                 fleetController.updateMachines(machines)
+                #if os(macOS)
+                warmupCoordinator.update(machines: machines)
+                #endif
             }
+            #if os(macOS)
+            .onChange(of: machines.map(\.autoWarmup)) {
+                warmupCoordinator.update(machines: machines)
+            }
+            #endif
             .onChange(of: settings.apiKey) {
                 guard let apiKey = settings.apiKey else { return }
                 Task {

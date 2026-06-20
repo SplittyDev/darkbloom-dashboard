@@ -12,6 +12,7 @@ struct ControllerPreviewModifier: PreviewModifier {
     private let loadTestingController = LoadTestingController.shared
     private let localLogController = LocalLogController.shared
     private let restartController = RestartController.shared
+    private let warmupCoordinator = WarmupCoordinator.shared
     #endif
     
     static func makeSharedContext() async throws -> ModelContainer {
@@ -56,6 +57,7 @@ struct ControllerPreviewModifier: PreviewModifier {
             .environment(loadTestingController)
             .environment(localLogController)
             .environment(restartController)
+            .environment(warmupCoordinator)
             #endif
             .modelContainer(context)
     }

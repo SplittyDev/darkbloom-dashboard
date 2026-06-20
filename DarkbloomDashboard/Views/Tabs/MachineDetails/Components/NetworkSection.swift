@@ -5,7 +5,7 @@ extension MachineDetailTab {
         @Environment(APIDataController.self) private var dataController
         @State private var warmupInProgress: Bool = false
         
-        let serialNo: String
+        @Bindable var machine: MachineModel
         let activity: MachineActivityInfo
         
         var body: some View {
@@ -39,10 +39,14 @@ extension MachineDetailTab {
             } footer: {
                 HStack {
                     Spacer()
+                    #if os(macOS)
+                    Toggle("Keep Warm", isOn: $machine.autoWarmup)
+                        .toggleStyle(.checkbox)
+                    #endif
                     Button {
                         warmupInProgress = true
                         Task {
-                            try? await dataController.warmup(serialNumber: serialNo)
+                            try? await dataController.warmup(serialNumber: machine.serialNo)
                             warmupInProgress = false
                         }
                     } label: {
