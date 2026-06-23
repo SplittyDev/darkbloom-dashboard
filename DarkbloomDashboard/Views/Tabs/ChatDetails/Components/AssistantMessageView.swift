@@ -1,6 +1,5 @@
 import SwiftUI
 import FiveKit
-import MarkdownView
 
 extension ChatDetailTab {
     struct AssistantMessageView: View {
@@ -14,6 +13,15 @@ extension ChatDetailTab {
                 message.content.fixingMarkdown
             } else {
                 message.content
+            }
+        }
+        
+        private var contentText: Text {
+            let content = self.content
+            return if let attrStr = try? AttributedString(markdown: content) {
+                Text(attrStr)
+            } else {
+                Text(content)
             }
         }
         
@@ -36,7 +44,7 @@ extension ChatDetailTab {
                         }
                         .transition(.blurReplace)
                     } else {
-                        MarkdownView(content)
+                        contentText
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
