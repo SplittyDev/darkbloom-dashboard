@@ -67,7 +67,7 @@ final class APIDataController {
         guard let client else { return }
         try await client.warmupMachine(
             serialNumber: serialNumber,
-            models: ["gpt-oss-20b", "gemma-4-26b"]
+            models: DarkbloomModel.recommendedCases.map(\.rawValue)
         )
     }
     
