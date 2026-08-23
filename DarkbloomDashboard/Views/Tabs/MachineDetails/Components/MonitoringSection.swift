@@ -139,12 +139,8 @@ extension MachineDetailTab {
         
         var body: some View {
             Section {
-                if let version = localServiceController.darkbloomVersion {
-                    LabeledContent {
-                        Text(version)
-                    } label: {
-                        Text("Version")
-                    }
+                if let state = localServiceController.daemonState {
+                    LocalServiceDetails(state: state)
                 }
                 
                 if let restartTask = viewModel.restartTask {

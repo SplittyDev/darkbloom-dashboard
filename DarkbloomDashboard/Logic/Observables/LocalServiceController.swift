@@ -3,18 +3,72 @@
 import Foundation
 import IOKit
 
+struct DarkbloomDaemonState: Decodable, Sendable {
+    struct Capacity: Decodable, Sendable {
+        let gpuMemoryActiveGb: Double
+        let gpuMemoryCacheGb: Double
+        let totalMemoryGb: Double
+    }
+    
+    struct Trust: Decodable, Sendable {
+        let status: String
+        let receivedAt: Date
+        let reason: String
+        let trustLevel: String
+    }
+    
+    struct Slot: Decodable, Sendable {
+        let kvBackendRequested: String
+        let mtpEnabled: Bool
+        let kvBackend: String
+        let mtpActive: Bool
+        let model: String
+    }
+    
+    struct ProcessIdentity: Decodable, Sendable {
+        let pid: Int
+        let startTimeMicros: Int64
+    }
+    
+    struct Stats: Decodable, Sendable {
+        let usageGaps: Int
+        let tokensGenerated: Int
+        let requestsServed: Int
+    }
+    
+    let writtenAt: Date
+    let capacity: Capacity
+    let schema: Int
+    let currentModel: String
+    let trust: Trust
+    let pid: Int
+    let version: String
+    let slots: [Slot]
+    let warmModels: [String]
+    let startedAt: Date
+    let processIdentity: ProcessIdentity
+    let stats: Stats
+    let inferenceActive: Bool
+    
+    static func decode(from data: Data) throws -> Self {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .secondsSince1970
+        return try decoder.decode(Self.self, from: data)
+    }
+}
+
 @MainActor @Observable
 final class LocalServiceController {
     static let shared = LocalServiceController()
     
     private var launchctlTask: Task<Void, Never>?
-    private var versionTask: Task<Void, Never>?
     
     private(set) var processExists: Bool = false
     private(set) var processIsRunning: Bool?
     
     private(set) var currentMachineSerialNumber: String?
-    private(set) var darkbloomVersion: String?
+    private(set) var daemonState: DarkbloomDaemonState?
     
     private init() {
     }
@@ -31,29 +85,16 @@ final class LocalServiceController {
                     self.processExists = exists
                     self.processIsRunning = running
                 }
+                self.daemonState = try? await self.fetchDaemonState()
                 try? await Task.sleep(for: .seconds(5))
-            }
-        }
-        
-        if let location = try? fetchDarkbloomLocation() {
-            versionTask?.cancel()
-            versionTask = Task {
-                while !Task.isCancelled {
-                    if let version = try? await getVersion(at: location) {
-                        self.darkbloomVersion = version
-                    }
-                    try? await Task.sleep(for: .seconds(30))
-                }
             }
         }
     }
     
     func stopObservation() {
         launchctlTask?.cancel()
-        versionTask?.cancel()
         
         launchctlTask = nil
-        versionTask = nil
     }
     
     private func getSerialNumber() -> String? {
@@ -120,8 +161,10 @@ final class LocalServiceController {
         print("-> \(startOutput)")
     }
     
-    func getVersion(at path: String) async throws -> String {
-        return try await run(path, ["--version"]).trimmingCharacters(in: .whitespacesAndNewlines)
+    @concurrent private func fetchDaemonState() async throws -> DarkbloomDaemonState {
+        let url = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".darkbloom/daemon-state.json")
+        return try DarkbloomDaemonState.decode(from: Data(contentsOf: url))
     }
     
     @concurrent private func run(_ executable: String, _ arguments: [String]) async throws -> String {
