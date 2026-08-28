@@ -296,7 +296,7 @@ final class APIDataController {
                     cpuCores: providerStats.cpuCores,
                     gpuCores: providerStats.gpuCores,
                     memoryGb: providerStats.memoryGb,
-                    memoryBandwidthGbs: providerStats.memoryBandwidthGbs
+                    memoryBandwidthGbs: Int(providerStats.memoryBandwidthGbs)
                 ),
                 activity: MachineActivityInfo(
                     requestsServed: providerStats.requestsServed,

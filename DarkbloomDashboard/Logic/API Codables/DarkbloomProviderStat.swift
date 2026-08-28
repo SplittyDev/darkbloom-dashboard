@@ -12,7 +12,7 @@ struct DarkbloomProviderStat: Decodable, Equatable {
     let gpuCores: Int
     
     let memoryGb: Int
-    let memoryBandwidthGbs: Int
+    let memoryBandwidthGbs: Double
     
     let requestsServed: Int
     let tokensGenerated: Int
