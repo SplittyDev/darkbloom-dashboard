@@ -4,7 +4,7 @@ struct DarkbloomStats: Decodable {
     let activeProviders: Int
     let providers: [DarkbloomProviderStat]
     
-    let totalBandwidthGbs: Int
+    let totalBandwidthGbs: Double
     let totalCpuCores: Int
     let totalGpuCores: Int
     let totalMemoryGb: Int

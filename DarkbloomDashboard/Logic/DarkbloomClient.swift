@@ -19,17 +19,22 @@ final class DarkbloomClient {
         req.timeoutInterval = 10
         let (data, res) = try await URLSession.shared.data(for: req)
         guard let httpResponse = res as? HTTPURLResponse else {
-            print("Bad response for \(req.httpMethod?.uppercased() ?? "GET") \(url)")
+            print("[\(url.path(percentEncoded: false))] Bad response for \(req.httpMethod?.uppercased() ?? "GET") \(url)")
             throw DarkbloomAPIError.badResponse
         }
         guard httpResponse.statusCode == 200 else {
-            print("Status \(httpResponse.statusCode) for \(req.httpMethod?.uppercased() ?? "GET") \(url)")
+            print("[\(url.path(percentEncoded: false))] Status \(httpResponse.statusCode) for \(req.httpMethod?.uppercased() ?? "GET") \(url)")
             throw switch httpResponse.statusCode {
                 case 401, 403: DarkbloomAPIError.unauthorized
                 default: DarkbloomAPIError.badResponse
             }
         }
-        return try decoder.decode(T.self, from: data)
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            print("[\(url.path(percentEncoded: false))] \(error)")
+            throw error
+        }
     }
     
     // MARK: Documented API
