@@ -306,7 +306,9 @@ final class APIDataController {
                     models: providerStats.models
                 )
             )
-            self.machineInfo[provider.serialNumber] = machineInfo
+            if let serialNumber = provider.serialNumber {
+                self.machineInfo[serialNumber] = machineInfo
+            }
         }
     }
     

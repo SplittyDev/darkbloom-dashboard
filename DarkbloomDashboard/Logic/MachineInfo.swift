@@ -2,7 +2,7 @@ import Foundation
 
 struct MachineInfo: Equatable {
     let providerId: String
-    let serialNumber: String
+    let serialNumber: String?
     let trust: MachineTrustInfo
     let hardware: MachineHardwareInfo
     let activity: MachineActivityInfo
