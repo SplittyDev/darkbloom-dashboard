@@ -23,6 +23,7 @@ final class APIDataController {
         }
     }
     private(set) var models: [DarkbloomModelData]?
+    private(set) var modelCapacities: [DarkbloomModelCapacity]?
     private(set) var machineInfo: [String: MachineInfo] = [:]
     
     private(set) var lastStatUpdate: Date?
@@ -228,8 +229,15 @@ final class APIDataController {
     
     private func refreshModels() async throws {
         do {
-            self.models = try await client?.models().data
+            guard let client else { return }
+            async let modelsResponse = client.models()
+            async let capacityResponse = client.modelCapacity()
+            let (models, capacity) = try await (modelsResponse, capacityResponse)
+
+            self.models = models.data
                 .sorted(by: \.metadata.routableProviders, ascending: false, secondary: \.id)
+            self.modelCapacities = capacity.models
+                .sorted(by: \.demandPerRoutableProvider, ascending: false, secondary: \.id)
         } catch {
             print(error)
             throw error

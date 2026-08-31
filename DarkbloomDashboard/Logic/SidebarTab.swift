@@ -4,6 +4,7 @@ import SwiftData
 enum SidebarTab: Hashable, Identifiable {
     case overview
     case network
+    case demand
     case models
     case machine(MachineModel)
     case machines
@@ -16,6 +17,7 @@ enum SidebarTab: Hashable, Identifiable {
         switch self {
             case .overview: "overview"
             case .network: "network"
+            case .demand: "demand"
             case .models: "models"
             case .machine(let id): "machine-\(id)"
             case .machines: "machines"
@@ -30,6 +32,7 @@ enum SidebarTab: Hashable, Identifiable {
         switch self {
             case .overview: "Overview"
             case .network: "Network"
+            case .demand: "Demand"
             case .models: "Models"
             case .machine(let machine): machine.serialNo
             case .machines: "Fleet"
@@ -44,6 +47,7 @@ enum SidebarTab: Hashable, Identifiable {
         switch self {
             case .overview: "gauge.with.dots.needle.67percent"
             case .network: "network"
+            case .demand: "chart.bar.xaxis.ascending"
             case .models: "list.dash"
             case .machine: "macstudio"
             case .machines: "macstudio"

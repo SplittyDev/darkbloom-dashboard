@@ -44,7 +44,7 @@ struct ContentView_macOS: View {
             case .overview, .network, .machine, .machines, .loadGenerator:
                 guard let lastUpdate = dataController.lastStatUpdate else { return "" }
                 return "Last updated: \(dateFormatter.string(from: lastUpdate))"
-            case .models:
+            case .demand, .models:
                 guard let lastUpdate = dataController.lastModelUpdate else { return "" }
                 return "Last updated: \(dateFormatter.string(from: lastUpdate))"
             case .logs:
@@ -59,7 +59,7 @@ struct ContentView_macOS: View {
             case .overview, .network, .machine, .machines, .loadGenerator:
                 dataController.updateStatsAndAttestations()
                 dataController.updateBalance()
-            case .models:
+            case .demand, .models:
                 dataController.updateModels()
             case .logs, .chat, .chats:
                 break // not supported
@@ -70,7 +70,7 @@ struct ContentView_macOS: View {
         switch tab {
             case .overview, .network, .machine, .machines, .loadGenerator:
                 dataController.isUpdatingStats
-            case .models:
+            case .demand, .models:
                 dataController.isUpdatingModels
             case .logs:
                 logsViewModel.isUpdating
@@ -81,7 +81,7 @@ struct ContentView_macOS: View {
     
     private func shouldShowUpdateButton(for tab: SidebarTab) -> Bool {
         switch tab {
-            case .overview, .network, .models, .machine, .machines:
+            case .overview, .network, .demand, .models, .machine, .machines:
                 true
             case .loadGenerator, .logs, .chat, .chats:
                 false
@@ -117,6 +117,7 @@ struct ContentView_macOS: View {
     @ViewBuilder private var darkbloomSection: some View {
         Section {
             SidebarLink(value: .network)
+            SidebarLink(value: .demand)
             SidebarLink(value: .models)
         } header: {
             Text("Darkbloom")
@@ -172,6 +173,8 @@ struct ContentView_macOS: View {
                         OverviewTab()
                     case .network:
                         NetworkTab()
+                    case .demand:
+                        DemandTab()
                     case .models:
                         ModelsTab()
                     case .machine(let machine):

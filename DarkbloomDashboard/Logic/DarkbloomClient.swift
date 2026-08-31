@@ -58,6 +58,11 @@ final class DarkbloomClient {
         let url = HOST.appending(path: "models")
         return try await fetch(url)
     }
+
+    func modelCapacity() async throws -> DarkbloomModelCapacityResponse {
+        let url = HOST.appending(path: "models/capacity")
+        return try await fetch(url)
+    }
     
     // MARK: Undocumented API
     

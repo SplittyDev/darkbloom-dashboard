@@ -12,6 +12,36 @@ import Testing
 @MainActor
 struct Darkbloom_DashboardTests {
 
+    @Test func modelCapacityDecodesDemandPressure() throws {
+        let data = Data(#"""
+        {
+          "models": [{
+            "id": "test-model",
+            "ready": true,
+            "can_accept": true,
+            "routable_providers": 4,
+            "warm_providers": 6,
+            "running_providers": 3,
+            "cold_providers": 2,
+            "active_requests": 8,
+            "queued_requests": 2,
+            "queue_limit": 8,
+            "aggregate_tps": 125.5,
+            "estimated_ttft_ms": 140,
+            "token_budget_remaining": 900,
+            "token_budget_total": 1000
+          }]
+        }
+        """#.utf8)
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+        let capacity = try decoder.decode(DarkbloomModelCapacityResponse.self, from: data).models[0]
+
+        #expect(capacity.demand == 10)
+        #expect(capacity.demandPerRoutableProvider == 2.5)
+    }
+
     #if os(macOS)
     @Test func daemonStateDecodesSnapshot() throws {
         let data = Data(#"""
