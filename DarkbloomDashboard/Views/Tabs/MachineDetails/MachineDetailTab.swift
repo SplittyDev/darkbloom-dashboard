@@ -44,6 +44,10 @@ struct MachineDetailTab: View {
                 #endif
                 
                 NetworkSection(machine: machine, activity: info.activity)
+            } else if !dataController.machineInfo.isEmpty {
+                Section {
+                    Label("The API currently does not return serial numbers, making it impossible to fetch remote machines belonging to your fleet. We are working on resolving this.", systemImage: "exclamationmark.triangle.fill")
+                }
             }
         }
         .formStyle(.grouped)
