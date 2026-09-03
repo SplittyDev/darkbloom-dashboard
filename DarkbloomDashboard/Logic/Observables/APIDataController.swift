@@ -314,9 +314,19 @@ final class APIDataController {
                     models: providerStats.models
                 )
             )
+            
             if let serialNumber = provider.serialNumber {
                 self.machineInfo[serialNumber] = machineInfo
             }
+            
+            #if os(macOS)
+            let localServiceController = LocalServiceController.shared
+            if let ownSerialNumber = localServiceController.currentMachineSerialNumber,
+               let daemonState = localServiceController.daemonState,
+               provider.sePublicKey == daemonState.attestationPublicKey {
+                self.machineInfo[ownSerialNumber] = machineInfo
+            }
+            #endif
         }
     }
     

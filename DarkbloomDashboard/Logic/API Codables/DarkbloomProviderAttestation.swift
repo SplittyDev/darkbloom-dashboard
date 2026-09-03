@@ -14,6 +14,7 @@ struct DarkbloomProviderAttestation: Decodable, Equatable {
     let providerId: String
     let secureBootEnabled: Bool
     let secureEnclave: Bool
+    let sePublicKey: String
     let serialNumber: String?
     let sipEnabled: Bool
     let status: DarkbloomProviderStatus

@@ -49,6 +49,7 @@ struct DarkbloomDaemonState: Decodable, Sendable {
     let processIdentity: ProcessIdentity
     let stats: Stats
     let inferenceActive: Bool
+    let attestationPublicKey: String?
     
     static func decode(from data: Data) throws -> Self {
         let decoder = JSONDecoder()
