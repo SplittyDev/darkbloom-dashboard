@@ -73,7 +73,6 @@ extension DarkbloomModel {
         [
             .`qwen3.6-35b-a3b-vl-mtp-mxfp8`,
             .`qwen3.5-35b-a3b`,
-            .`qwen3-vl-30b-a3b-instruct`,
             .`gemma-4-26b`,
             .`gpt-oss-20b`
         ]
