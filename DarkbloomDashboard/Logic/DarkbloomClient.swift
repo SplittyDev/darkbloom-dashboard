@@ -2,7 +2,7 @@ import Foundation
 
 private let HOST: URL = URL(string: "https://api.darkbloom.dev/v1")!
 
-final class DarkbloomClient {
+final actor DarkbloomClient {
     let apiKey: String
     let decoder: JSONDecoder
     
