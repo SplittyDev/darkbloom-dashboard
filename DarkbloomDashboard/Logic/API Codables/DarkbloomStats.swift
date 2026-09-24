@@ -14,9 +14,9 @@ struct DarkbloomStats: Decodable {
     let totalPromptTokens: Int
     let totalCompletionTokens: Int
     
-    let providerLocations: [DarkbloomProviderLocation]
-    let requestFlows: [DarkbloomRequestFlow]
-    let requestLocations: [DarkbloomRequestLocation]
-    let requestRegions: [DarkbloomRequestRegion]
-    let timeSeries: [DarkbloomTimeSeriesEntry]
+    let providerLocations: [DarkbloomProviderLocation]?
+    let requestFlows: [DarkbloomRequestFlow]?
+    let requestLocations: [DarkbloomRequestLocation]?
+    let requestRegions: [DarkbloomRequestRegion]?
+    let timeSeries: [DarkbloomTimeSeriesEntry]?
 }

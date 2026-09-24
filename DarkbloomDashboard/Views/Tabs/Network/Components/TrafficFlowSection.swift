@@ -121,9 +121,15 @@ extension NetworkTab.TrafficFlowSection {
         var body: some View {
             Map(position: $position, interactionModes: [.pan, .zoom], selection: $selection) {
                 if let stats = dataController.stats {
-                    ProviderLocationsMapContent(stats: stats)
-                    RequestLocationsMapContent(stats: stats)
-                    RequestFlowsMapContent(stats: stats, dashPhase: dashPhase)
+                    if let providerLocations = stats.providerLocations {
+                        ProviderLocationsMapContent(providerLocations: providerLocations)
+                    }
+                    if let requestLocations = stats.requestLocations {
+                        RequestLocationsMapContent(requestLocations: requestLocations)
+                    }
+                    if let requestFlows = stats.requestFlows {
+                        RequestFlowsMapContent(requestFlows: requestFlows, dashPhase: dashPhase)
+                    }
                 }
             }
             .mapStyle(mapStyle.mapStyle)
@@ -193,14 +199,14 @@ extension NetworkTab.TrafficFlowSection {
     }
     
     private struct ProviderLocationsMapContent: MapContent {
-        let stats: DarkbloomStats
+        let providerLocations: [DarkbloomProviderLocation]
         
         var body: some MapContent {
-            let minMaxProviders = stats.providerLocations.minmax(byValue: \.providers)
+            let minMaxProviders = providerLocations.minmax(byValue: \.providers)
             let minProviders = max(0, minMaxProviders?.min ?? 0)
             let maxProviders = max(1, minMaxProviders?.max ?? 1)
             
-            ForEach(stats.providerLocations, id: \.key) { location in
+            ForEach(providerLocations, id: \.key) { location in
                 ProviderLocationAnnotation(
                     minProviders: minProviders,
                     maxProviders: maxProviders,
@@ -255,14 +261,14 @@ extension NetworkTab.TrafficFlowSection {
     }
     
     private struct RequestLocationsMapContent: MapContent {
-        let stats: DarkbloomStats
+        let requestLocations: [DarkbloomRequestLocation]
         
         var body: some MapContent {
-            let minMaxRequests = stats.requestLocations.minmax(byValue: \.providers)
+            let minMaxRequests = requestLocations.minmax(byValue: \.providers)
             let minRequests = max(0, minMaxRequests?.min ?? 0)
             let maxRequests = max(1, minMaxRequests?.max ?? 1)
             
-            ForEach(stats.requestLocations, id: \.key) { location in
+            ForEach(requestLocations, id: \.key) { location in
                 RequestLocationAnnotation(
                     minRequests: minRequests,
                     maxRequests: maxRequests,
@@ -319,11 +325,11 @@ extension NetworkTab.TrafficFlowSection {
     }
     
     private struct RequestFlowsMapContent: MapContent {
-        let stats: DarkbloomStats
+        let requestFlows: [DarkbloomRequestFlow]
         let dashPhase: CGFloat
         
         var body: some MapContent {
-            ForEach(stats.requestFlows, id: \.key) { flow in
+            ForEach(requestFlows, id: \.key) { flow in
                 RequestFlowPolyline(flow: flow, dashPhase: dashPhase)
             }
         }

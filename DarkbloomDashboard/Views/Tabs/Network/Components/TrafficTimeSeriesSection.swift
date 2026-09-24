@@ -38,7 +38,8 @@ extension NetworkTab {
         let stats: DarkbloomStats
         
         private var requestSeries: [RequestSeriesEntry] {
-            let rawEntries = stats.timeSeries.map {
+            guard let timeSeries = stats.timeSeries else { return [] }
+            let rawEntries = timeSeries.map {
                 RequestSeriesEntry(timestamp: $0.timestamp, requests: $0.requests)
             }
             guard let (firstEntryTime, lastEntryTime) = rawEntries.minmax(byValue: \.timestamp) else {
@@ -58,7 +59,8 @@ extension NetworkTab {
         }
         
         private var tokenSeries: [TokenSeriesEntry] {
-            stats.timeSeries.flatMap { entry in
+            guard let timeSeries = stats.timeSeries else { return [] }
+            return timeSeries.flatMap { entry in
                 [
                     TokenSeriesEntry(timestamp: entry.timestamp, kind: .prompt, tokens: entry.promptTokens),
                     TokenSeriesEntry(timestamp: entry.timestamp, kind: .completion, tokens: entry.completionTokens),
@@ -98,23 +100,35 @@ extension NetworkTab {
                     
                     // Requests Header
                     VStack(alignment: .leading) {
-                        let total = stats.timeSeries.map(\.requests).reduce(0, +)
-                        let peak = stats.timeSeries.map(\.requests).max() ?? 0
                         Text("Requests / Minute")
-                        Text("\(total) total / \(peak) peak")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        if let timeSeries = stats.timeSeries {
+                            let total = timeSeries.map(\.requests).reduce(0, +)
+                            let peak = timeSeries.map(\.requests).max() ?? 0
+                            Text("\(total) total / \(peak) peak")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("Unavailable")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     
                     // Tokens Header
                     VStack(alignment: .leading) {
-                        let total = stats.timeSeries.map(\.totalTokens).reduce(0, +)
-                        let peak = stats.timeSeries.map(\.totalTokens).max() ?? 0
                         Text("Tokens / Minute")
-                        Text("\(total) total / \(peak) peak")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        if let timeSeries = stats.timeSeries {
+                            let total = timeSeries.map(\.totalTokens).reduce(0, +)
+                            let peak = timeSeries.map(\.totalTokens).max() ?? 0
+                            Text("\(total) total / \(peak) peak")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("Unavailable")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
