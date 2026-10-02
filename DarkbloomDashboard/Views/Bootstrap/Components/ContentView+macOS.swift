@@ -49,7 +49,7 @@ struct ContentView_macOS: View {
                 return "Last updated: \(dateFormatter.string(from: lastUpdate))"
             case .logs:
                 return "Last updated: \(dateFormatter.string(from: logsViewModel.lastFetchDate))"
-            case .chat, .chats:
+            case .chat, .chats, .autopilot:
                 return ""
         }
     }
@@ -61,7 +61,7 @@ struct ContentView_macOS: View {
                 dataController.updateBalance()
             case .demand, .models:
                 dataController.updateModels()
-            case .logs, .chat, .chats:
+            case .logs, .chat, .chats, .autopilot:
                 break // not supported
         }
     }
@@ -74,7 +74,7 @@ struct ContentView_macOS: View {
                 dataController.isUpdatingModels
             case .logs:
                 logsViewModel.isUpdating
-            case .chat, .chats:
+            case .chat, .chats, .autopilot:
                 false
         }
     }
@@ -83,7 +83,7 @@ struct ContentView_macOS: View {
         switch tab {
             case .overview, .network, .demand, .models, .machine, .machines:
                 true
-            case .loadGenerator, .logs, .chat, .chats:
+            case .loadGenerator, .logs, .chat, .chats, .autopilot:
                 false
         }
     }
@@ -119,6 +119,7 @@ struct ContentView_macOS: View {
             SidebarLink(value: .network)
             SidebarLink(value: .demand)
             SidebarLink(value: .models)
+            SidebarAutopilotLink()
         } header: {
             Text("Darkbloom")
         }
@@ -175,6 +176,8 @@ struct ContentView_macOS: View {
                         NetworkTab()
                     case .demand:
                         DemandTab()
+                    case .autopilot:
+                        AutopilotTab()
                     case .models:
                         ModelsTab()
                     case .machine(let machine):

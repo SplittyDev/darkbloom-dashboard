@@ -292,6 +292,7 @@ final class RestartController {
     
     #if os(macOS)
     private func performLocalRestart(for task: RestartTask) async throws {
+        await AutopilotController.shared.pauseAndWait()
         let darkbloomLocation: String? = try? await task.withSubtask("Finding darkbloom location") { t in
             let location = try localServiceController.fetchDarkbloomLocation()
             t.log("Found darkbloom at \(location)")

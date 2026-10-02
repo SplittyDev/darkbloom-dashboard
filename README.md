@@ -28,6 +28,7 @@ This app features a wide variety of tools to make your life as a darkbloom provi
 - Generate load on the network (uses your API key to inject traffic)
 - Warm up machines in order to get them ready to receive requests
 - Smart provider restart with automatic model warmup
+- Automatic local model selection with Autopilot (macOS only)
 - View local darkbloom logs in real-time (macOS only)
 - Chat on the darkbloom network
 

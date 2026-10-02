@@ -93,6 +93,22 @@ struct Darkbloom_DashboardTests {
         #expect(state.slots.first?.kvBackend == "contiguous")
         #expect(state.stats.requestsServed == 372)
         #expect(state.inferenceActive)
+        #expect(state.selectedModels == ["gemma-4-26b-qat-4bit"]) // Legacy fallback.
+
+        var snapshot = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        snapshot["advertised_models"] = ["qwen3.5-35b-a3b"]
+        snapshot["model_switch"] = ["outcome": "switched", "models": ["qwen3.5-35b-a3b"], "remaining": 0]
+        snapshot["lifecycle"] = ["outcome": "serving", "remaining": 0]
+        var selected = try DarkbloomDaemonState.decode(from: JSONSerialization.data(withJSONObject: snapshot))
+        #expect(selected.selectedModels == ["qwen3.5-35b-a3b"])
+        #expect(selected.selectionIsSettled)
+        snapshot["current_model"] = NSNull()
+        snapshot["slots"] = NSNull()
+        selected = try DarkbloomDaemonState.decode(from: JSONSerialization.data(withJSONObject: snapshot))
+        #expect(selected.selectedModels == ["qwen3.5-35b-a3b"])
+        snapshot["advertised_models"] = []
+        selected = try DarkbloomDaemonState.decode(from: JSONSerialization.data(withJSONObject: snapshot))
+        #expect(selected.selectedModels.isEmpty)
     }
     #endif
 

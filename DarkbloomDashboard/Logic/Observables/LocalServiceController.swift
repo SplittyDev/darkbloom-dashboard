@@ -4,6 +4,17 @@ import Foundation
 import IOKit
 
 struct DarkbloomDaemonState: Decodable, Sendable {
+    struct ModelSwitch: Decodable, Sendable {
+        let outcome: String
+        let models: [String]
+        var remaining: Int? = nil
+    }
+
+    struct Lifecycle: Decodable, Sendable {
+        let outcome: String
+        var remaining: Int? = nil
+    }
+
     struct Capacity: Decodable, Sendable {
         let gpuMemoryActiveGb: Double
         let gpuMemoryCacheGb: Double
@@ -50,12 +61,55 @@ struct DarkbloomDaemonState: Decodable, Sendable {
     let stats: Stats
     let inferenceActive: Bool
     let attestationPublicKey: String?
+    var advertisedModels: [String]? = nil
+    var modelSwitch: ModelSwitch? = nil
+    var lifecycle: Lifecycle? = nil
+
+    // Hosting selection changes before lazy-loaded slots/currentModel do.
+    var selectedModels: [String] {
+        Array(Set(advertisedModels ?? (slots.map(\.model) + [currentModel])).subtracting([""])).sorted()
+    }
+
+    var selectionIsSettled: Bool {
+        lifecycle?.outcome == "serving" &&
+            (modelSwitch == nil || ["serving", "switched", "failed", "busy"].contains(modelSwitch!.outcome))
+    }
     
     static func decode(from data: Data) throws -> Self {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         decoder.dateDecodingStrategy = .secondsSince1970
         return try decoder.decode(Self.self, from: data)
+    }
+}
+
+extension DarkbloomDaemonState {
+    private enum CodingKeys: String, CodingKey {
+        case writtenAt, capacity, schema, currentModel, trust, pid, version, slots, warmModels
+        case startedAt, processIdentity, stats, inferenceActive, attestationPublicKey
+        case advertisedModels, modelSwitch, lifecycle
+    }
+
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        writtenAt = try values.decode(Date.self, forKey: .writtenAt)
+        capacity = try values.decode(Capacity.self, forKey: .capacity)
+        schema = try values.decode(Int.self, forKey: .schema)
+        // A valid serving selection can have no loaded model yet (lazy loading).
+        currentModel = try values.decodeIfPresent(String.self, forKey: .currentModel) ?? ""
+        slots = try values.decodeIfPresent([Slot].self, forKey: .slots) ?? []
+        trust = try values.decode(Trust.self, forKey: .trust)
+        pid = try values.decode(Int.self, forKey: .pid)
+        version = try values.decode(String.self, forKey: .version)
+        warmModels = try values.decode([String].self, forKey: .warmModels)
+        startedAt = try values.decode(Date.self, forKey: .startedAt)
+        processIdentity = try values.decode(ProcessIdentity.self, forKey: .processIdentity)
+        stats = try values.decode(Stats.self, forKey: .stats)
+        inferenceActive = try values.decode(Bool.self, forKey: .inferenceActive)
+        attestationPublicKey = try values.decodeIfPresent(String.self, forKey: .attestationPublicKey)
+        advertisedModels = try values.decodeIfPresent([String].self, forKey: .advertisedModels)
+        modelSwitch = try values.decodeIfPresent(ModelSwitch.self, forKey: .modelSwitch)
+        lifecycle = try values.decodeIfPresent(Lifecycle.self, forKey: .lifecycle)
     }
 }
 
@@ -92,6 +146,16 @@ final class LocalServiceController {
         }
     }
     
+    func refreshSnapshot() async {
+        if let status = try? await fetchStatus() {
+            processExists = status.exists
+            processIsRunning = status.running
+        } else {
+            processIsRunning = nil
+        }
+        daemonState = try? await fetchDaemonState()
+    }
+
     func stopObservation() {
         launchctlTask?.cancel()
         

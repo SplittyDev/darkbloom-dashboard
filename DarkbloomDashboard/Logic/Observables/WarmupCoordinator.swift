@@ -67,7 +67,19 @@ final class WarmupCoordinator {
                         uniqueKeysWithValues: models.map { ($0, LocalWarmupState(model: $0, lastWarmup: nil)) }
                     )
                     while !Task.isCancelled {
+                        #if os(macOS)
+                        // Synthetic local demand would distort Autopilot's ranking and calibration.
+                        if serial == LocalServiceController.shared.currentMachineSerialNumber,
+                           AutopilotController.shared.isEnabled || AutopilotController.shared.isBusy {
+                            try? await Task.sleep(for: .seconds(60))
+                            continue
+                        }
+                        #endif
                         for model in models {
+                            #if os(macOS)
+                            if serial == LocalServiceController.shared.currentMachineSerialNumber,
+                               AutopilotController.shared.isEnabled || AutopilotController.shared.isBusy { break }
+                            #endif
                             guard let state = localState[model], state.isDue else { continue }
                             do {
                                 try await APIDataController.shared.warmup(model: model, for: serial)

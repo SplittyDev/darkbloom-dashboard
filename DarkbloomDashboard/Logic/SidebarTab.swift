@@ -5,6 +5,7 @@ enum SidebarTab: Hashable, Identifiable {
     case overview
     case network
     case demand
+    case autopilot
     case models
     case machine(MachineModel)
     case machines
@@ -17,6 +18,7 @@ enum SidebarTab: Hashable, Identifiable {
         switch self {
             case .overview: "overview"
             case .network: "network"
+            case .autopilot: "autopilot"
             case .demand: "demand"
             case .models: "models"
             case .machine(let id): "machine-\(id)"
@@ -32,6 +34,7 @@ enum SidebarTab: Hashable, Identifiable {
         switch self {
             case .overview: "Overview"
             case .network: "Network"
+            case .autopilot: "Autopilot"
             case .demand: "Demand"
             case .models: "Models"
             case .machine(let machine): machine.serialNo
@@ -47,6 +50,7 @@ enum SidebarTab: Hashable, Identifiable {
         switch self {
             case .overview: "gauge.with.dots.needle.67percent"
             case .network: "network"
+            case .autopilot: "airplane.circle"
             case .demand: "chart.bar.xaxis.ascending"
             case .models: "list.dash"
             case .machine: "macstudio"
