@@ -13,9 +13,9 @@ struct AutopilotTests {
               completionTokens: 200, totalSeconds: seconds, decodeTokensPerSecond: 30)
     }
 
-    private func capacity(_ id: String, demand: Int = 4, providers: Int = 4) -> DarkbloomModelCapacity {
+    private func capacity(_ id: String, demand: Int = 4, providers: Int = 4, fleetTPS: Double? = nil) -> DarkbloomModelCapacity {
         .init(id: id, canAccept: false, routableProviders: providers, warmProviders: providers,
-              activeRequests: demand, queuedRequests: 0, queueLimit: 8, aggregateTps: 100)
+              activeRequests: demand, queuedRequests: 0, queueLimit: 8, aggregateTps: fleetTPS ?? Double(providers) * 30)
     }
 
     private func model(_ id: String, price: String = "0.000001", artifactID: String? = nil) throws -> DarkbloomModelData {
@@ -44,19 +44,20 @@ struct AutopilotTests {
         // Existing saved share settings must be ignored: providers receive the full price.
         let legacyEconomics = try JSONDecoder().decode(AutopilotEconomics.self, from: Data(
             #"{"providerShare":0.5,"electricityPerKWh":0,"servingWatts":0,"minimumImprovement":0.1}"#.utf8))
+        #expect(legacyEconomics.idlePowerInput == 0)
         let ranks = AutopilotRanking.rank(models: try [model("fast"), model("slow", price: "0.000002")],
             capacity: [capacity("fast"), capacity("slow")], local: [local(), local("slow")],
             benchmarks: ["fast": benchmark("fast"), "slow": benchmark("slow", seconds: 30)],
             activeModels: ["fast"], memoryGB: 32, economics: legacyEconomics)
         #expect(ranks.first?.id == "fast")
         #expect(ranks.first?.hourlyRevenue == 0.072)
-        #expect(ranks.last?.utilization == 0.8)
+        #expect(abs((ranks.last?.utilization ?? 0) - 0.8) < 1e-9)
     }
 
     @Test func excludesMissingDownloadsOversizedModelsAndUnmeasuredModels() throws {
         let ranks = AutopilotRanking.rank(models: try [model("fast"), model("huge"), model("missing"), model("unmeasured")],
             capacity: [capacity("fast"), capacity("huge"), capacity("missing"), capacity("unmeasured")],
-            local: [local(), local("huge", memory: 30), local("unmeasured")],
+            local: [local(), local("huge", memory: 33), local("unmeasured")],
             benchmarks: ["fast": benchmark("fast"), "huge": benchmark("huge"), "missing": benchmark("missing")],
             activeModels: [], memoryGB: 32, economics: .init())
         #expect(ranks.map(\.id) == ["fast"])
@@ -116,16 +117,129 @@ struct AutopilotTests {
         #expect(excluded["mlx-community/fast"] == "Not in the Darkbloom model catalog")
     }
 
-    @Test func noDemandHasNoRevenueAndPowerCanMakeProfitNegative() throws {
+    @Test func noDemandHasNoRevenueAndOnlyConsumesConfiguredIdlePower() throws {
         let ranks = AutopilotRanking.rank(models: try [model("fast")], capacity: [capacity("fast", demand: 0)],
             local: [local()], benchmarks: ["fast": benchmark("fast")], activeModels: [], memoryGB: 32,
             economics: .init(electricityPerKWh: 0.2, servingWatts: 100))
         #expect(ranks.first?.hourlyRevenue == 0)
-        #expect(abs((ranks.first?.hourlyProfit ?? 1) + 0.02) < 0.00001)
+        #expect(ranks.first?.hourlyProfit == 0)
+        let withIdle = AutopilotRanking.rank(models: try [model("fast")], capacity: [capacity("fast", demand: 0)],
+            local: [local()], benchmarks: ["fast": benchmark("fast")], activeModels: [], memoryGB: 32,
+            economics: .init(electricityPerKWh: 0.2, servingWatts: 100, idleWatts: 10))
+        #expect(abs((withIdle.first?.hourlyProfit ?? 1) + 0.002) < 0.00001)
+    }
+
+    @Test func partialDemandScalesPowerAndReportsBenchmarkSizedRequests() throws {
+        let economics = AutopilotEconomics(electricityPerKWh: 0.2, servingWatts: 100)
+        let measured = try #require(AutopilotRanking.rank(models: [model("fast")],
+            capacity: [capacity("fast", demand: 1, providers: 5)], local: [local()],
+            benchmarks: ["fast": benchmark("fast")], activeModels: ["fast"], memoryGB: 32,
+            economics: economics).first)
+        #expect(abs(measured.utilization - 0.2) < 1e-9)
+        #expect(abs((measured.handledRequestsPerHour ?? 0) - 72) < 1e-9)
+        #expect(measured.requestSeconds == 10)
+        #expect(measured.usesFleetThroughput)
+        #expect(abs(economics.hourlyCost(utilization: measured.utilization) - 0.004) < 1e-9)
+        #expect(abs(measured.hourlyProfit - 0.0104) < 1e-9)
+        let withIdle = AutopilotEconomics(electricityPerKWh: 0.2, servingWatts: 100, idleWatts: 10)
+        #expect(withIdle.averageWatts(utilization: 0.2) == 28)
+        #expect(withIdle.averageWatts(utilization: 0) == 10)
+        #expect(withIdle.averageWatts(utilization: 1) == 100)
+        let restored = try JSONDecoder().decode(AutopilotEconomics.self, from: JSONEncoder().encode(withIdle))
+        #expect(restored.idlePowerInput == 10)
+        #expect(restored == withIdle)
+    }
+
+    @Test func fasterProcessingReducesBusyTimeForTheSameEstimatedArrivals() throws {
+        let economics = AutopilotEconomics(electricityPerKWh: 0.2, servingWatts: 100)
+        let faster = AutopilotBenchmark(modelID: "fast", measuredAt: .now, sizeBytes: 100,
+            promptTokens: 20, completionTokens: 200, totalSeconds: 5, decodeTokensPerSecond: 60)
+        func assessed(_ measurement: AutopilotBenchmark) throws -> AutopilotRank {
+            try #require(AutopilotRanking.rank(models: [model("fast")],
+                capacity: [capacity("fast", demand: 1, providers: 5)], local: [local()],
+                benchmarks: ["fast": measurement], activeModels: ["fast"], memoryGB: 32,
+                economics: economics).first)
+        }
+        let slow = try assessed(benchmark("fast"))
+        let fast = try assessed(faster)
+        #expect(fast.handledRequestsPerHour == slow.handledRequestsPerHour)
+        #expect(abs(fast.utilization - slow.utilization / 2) < 1e-9)
+        #expect(abs(fast.hourlyRevenue - slow.hourlyRevenue) < 1e-9)
+        #expect(fast.hourlyProfit > slow.hourlyProfit)
+    }
+
+    @Test func queueBacklogIsSpreadOverTheEvaluationMinuteAndMissingFleetRateIsExplicit() throws {
+        let queue = DarkbloomModelCapacity(id: "fast", canAccept: true, routableProviders: 5,
+            warmProviders: 5, activeRequests: 0, queuedRequests: 10, queueLimit: 32, aggregateTps: 150)
+        let queued = try #require(AutopilotRanking.rank(models: [model("fast")], capacity: [queue],
+            local: [local()], benchmarks: ["fast": benchmark("fast")], activeModels: ["fast"],
+            memoryGB: 32, economics: .init()).first)
+        #expect(abs((queued.offeredRequestsPerHour ?? 0) - 120) < 1e-9)
+        #expect(abs(queued.utilization - 1.0 / 3) < 1e-9)
+        let fallback = try #require(AutopilotRanking.rank(models: [model("fast")],
+            capacity: [capacity("fast", demand: 1, providers: 5, fleetTPS: 0)], local: [local()],
+            benchmarks: ["fast": benchmark("fast")], activeModels: ["fast"], memoryGB: 32, economics: .init()).first)
+        #expect(!fallback.usesFleetThroughput)
+        #expect(fallback.utilization == 0.2)
+    }
+
+    @Test func modelSetSharesIdlePowerAndCapsSequentialThroughput() {
+        let economics = AutopilotEconomics(electricityPerKWh: 0.2, servingWatts: 100, idleWatts: 50)
+        let a = rank("a", 0.0144)
+        let b = rank("b", 0.0144)
+        let estimate = AutopilotRanking.estimate([a, b], economics: economics)
+        #expect(abs(estimate.utilization - 0.4) < 1e-9)
+        #expect(estimate.averageWatts == 70)
+        #expect(abs(estimate.hourlyCost - 0.014) < 1e-9)
+        #expect(abs(estimate.hourlyRevenue - 0.0288) < 1e-9)
+        var saturatedA = a
+        var saturatedB = b
+        saturatedA.offeredUtilization = 2
+        saturatedB.offeredUtilization = 2
+        let capped = AutopilotRanking.estimate([saturatedA, saturatedB], economics: economics)
+        #expect(capped.utilization == 1)
+        #expect(capped.averageWatts == 100)
+        #expect(abs(capped.hourlyRevenue - 0.072) < 1e-9) // One busy hour, not four.
+        #expect(abs(capped.hourlyCost - 0.02) < 1e-9)
+    }
+
+    @Test func oversubscribedModelsCannotHandleMoreThanOneSequentialHourOfRequests() throws {
+        let ranks = AutopilotRanking.rank(models: try [model("a"), model("b")],
+            capacity: [capacity("a", demand: 20, providers: 5), capacity("b", demand: 20, providers: 5)],
+            local: [local("a", memory: 4), local("b", memory: 4)],
+            benchmarks: ["a": benchmark("a"), "b": benchmark("b")],
+            activeModels: ["a", "b"], memoryGB: 32, economics: .init())
+        #expect(ranks.allSatisfy { $0.offeredRequestsPerHour == 1440 && $0.handledRequestsPerHour == 360 })
+        let estimate = AutopilotRanking.estimate(ranks, economics: .init())
+        #expect(estimate.handledRequestsPerHour == 360)
+        #expect(estimate.utilization == 1)
+    }
+
+    @Test func additionalModelsCanImproveASetWithoutCoveringIdleCostAlone() throws {
+        let economics = AutopilotEconomics(electricityPerKWh: 0.2, servingWatts: 100, idleWatts: 100)
+        let installed = [local("a", memory: 4), local("b", memory: 4)]
+        let ranks = AutopilotRanking.rank(models: try [model("a"), model("b")],
+            capacity: [capacity("a", demand: 1, providers: 5), capacity("b", demand: 1, providers: 5)],
+            local: installed, benchmarks: ["a": benchmark("a"), "b": benchmark("b")],
+            activeModels: ["a", "b"], memoryGB: 32, economics: economics)
+        #expect(ranks.allSatisfy { $0.hourlyProfit < 0 })
+        let selection = AutopilotRanking.selection(ranks: ranks, local: installed, limits: .init(),
+            memoryGB: 32, economics: economics)
+        #expect(selection.map(\.id) == ["a", "b"])
+        #expect(AutopilotRanking.estimate(selection, economics: economics).hourlyProfit > 0)
+    }
+
+    @Test func addingLowerValueDemandToAnAlreadyBusyMachineDoesNotInflateProfit() {
+        let high = AutopilotRank(id: "high", utilization: 1, effectiveTPS: 20, hourlyRevenue: 1,
+            hourlyProfit: 1, demand: 10, competitors: 1, offeredUtilization: 2)
+        let low = rank("low", 0.01)
+        let selection = AutopilotRanking.selection(ranks: [high, low],
+            local: [local("high", memory: 4), local("low", memory: 4)], limits: .init(), memoryGB: 32)
+        #expect(selection.map(\.id) == ["high"])
     }
 
     private func rank(_ id: String, _ profit: Double) -> AutopilotRank {
-        .init(id: id, utilization: 1, effectiveTPS: 20, hourlyRevenue: profit,
+        .init(id: id, utilization: 0.2, effectiveTPS: 20, hourlyRevenue: profit,
               hourlyProfit: profit, demand: 4, competitors: 4)
     }
 
@@ -136,22 +250,89 @@ struct AutopilotTests {
         }
     }
 
+    private func singleModelCandidate(samples: [AutopilotSample], active: String,
+                                      minimumImprovement: Double) -> AutopilotRank? {
+        AutopilotRanking.switchSelection(samples: samples, active: [active],
+            local: [local("active"), local("candidate")],
+            limits: .init(maximumModelCount: 1), memoryGB: 32,
+            minimumImprovement: minimumImprovement)?.first
+    }
+
+    @Test func modelSetFillsCombinedBudgetInRankOrderAndSkipsModelsThatDoNotFit() {
+        let ranks = [rank("large", 5), rank("medium", 4), rank("small", 3), rank("tiny", 2)]
+        let installed = [local("large", memory: 60), local("medium", memory: 30),
+                         local("small", memory: 20), local("tiny", memory: 10)]
+        let selected = AutopilotRanking.selection(ranks: ranks, local: installed,
+            limits: .init(), memoryGB: 160)
+        #expect(selected.map(\.id) == ["large", "small"])
+        #expect(AutopilotRanking.selectionFits(selected.map(\.id), local: installed, limits: .init(), memoryGB: 160))
+        #expect(!AutopilotRanking.selectionFits(["large", "medium"], local: installed, limits: .init(), memoryGB: 160))
+        #expect(AutopilotRanking.selection(ranks: ranks, local: installed,
+            limits: .init(maximumModelCount: 1, maximumMemoryGB: 160), memoryGB: 160).map(\.id) == ["large"])
+        #expect(AutopilotRanking.selection(ranks: ranks, local: installed,
+            limits: .init(maximumMemoryGB: 160), memoryGB: 160).map(\.id) == ["large", "medium", "small"])
+        #expect(AutopilotRanking.selection(ranks: ranks, local: installed,
+            limits: .init(maximumMemoryGB: 1), memoryGB: 160).isEmpty)
+    }
+
+    @Test func loadingLimitsClampAndPermitAnExplicitFullMemoryBudget() {
+        #expect(AutopilotLoadingLimits().normalized(memoryGB: 64) == .init(maximumMemoryGB: 32))
+        #expect(AutopilotLoadingLimits(maximumModelCount: 10, maximumMemoryGB: 1000).normalized(memoryGB: 64)
+            == .init(maximumMemoryGB: 64))
+        #expect(AutopilotLoadingLimits(maximumModelCount: 0, maximumMemoryGB: -5).normalized(memoryGB: 64)
+            == .init(maximumModelCount: 1, maximumMemoryGB: 1))
+        #expect(AutopilotLoadingLimits(maximumMemoryGB: .nan).normalized(memoryGB: 64).maximumMemoryGB == 32)
+        #expect(local("large", memory: 60).exclusion(memoryGB: 64) == nil)
+        let unknown = AutopilotLocalModel(id: "unknown", estimatedMemoryGb: nil, sizeBytes: 100, templateRenderOk: true)
+        #expect(AutopilotRanking.selection(ranks: [rank("unknown", 5), rank("fast", 4)],
+            local: [unknown, local()], limits: .init(), memoryGB: 32).map(\.id) == ["fast"])
+    }
+
+    @Test func setChangesRequireStableSecondaryModelsAndReplacementImprovement() {
+        let installed = [local("leader", memory: 4), local("old", memory: 4), local("new", memory: 4)]
+        let limits = AutopilotLoadingLimits(maximumModelCount: 2)
+        func samples(_ profits: [Double]) -> [AutopilotSample] {
+            profits.enumerated().map { index, profit in
+                .init(date: Date(timeIntervalSince1970: Double(index) * 60),
+                      ranks: [rank("leader", 5), rank("old", 1), rank("new", profit)]
+                        .sorted { $0.hourlyProfit > $1.hourlyProfit })
+            }
+        }
+        func candidate(_ profits: [Double]) -> [String]? {
+            AutopilotRanking.switchSelection(samples: samples(profits), active: ["leader", "old"],
+                local: installed, limits: limits, memoryGB: 32, minimumImprovement: 0.1)?.map(\.id)
+        }
+        #expect(candidate([2, 2]) == nil)
+        #expect(candidate([2, 0.5, 2]) == nil) // Same leader, changing secondary winner.
+        #expect(candidate([1.05, 1.05, 1.05]) == nil)
+        #expect(candidate([2, 2, 2]) == ["leader", "new"])
+        #expect(AutopilotRanking.switchSelection(samples: samples([2, 2, 2]), active: ["leader"],
+            local: installed, limits: limits, memoryGB: 32, minimumImprovement: 0.1)?.map(\.id) == ["leader", "new"])
+    }
+
+    @Test func nonpositiveModelsDoNotFillUnusedBudget() {
+        #expect(AutopilotRanking.selection(ranks: [rank("fast", 1), rank("slow", 0)],
+            local: [local("fast", memory: 4), local("slow", memory: 4)], limits: .init(), memoryGB: 32).map(\.id) == ["fast"])
+        #expect(AutopilotRanking.selection(ranks: [rank("fast", 0), rank("slow", -1)],
+            local: [local("fast", memory: 4), local("slow", memory: 4)], limits: .init(), memoryGB: 32).map(\.id) == ["fast"])
+    }
+
     @Test func needsThreeConsecutiveWinnersAndWeightedImprovement() {
-        #expect(AutopilotRanking.switchCandidate(samples: window([2, 2]), active: "active", minimumImprovement: 0.1) == nil)
-        #expect(AutopilotRanking.switchCandidate(samples: window([2, 0.5, 2]), active: "active", minimumImprovement: 0.1) == nil)
-        #expect(AutopilotRanking.switchCandidate(samples: window([1.05, 1.05, 1.05]), active: "active", minimumImprovement: 0.1) == nil)
-        #expect(AutopilotRanking.switchCandidate(samples: window([2, 2, 2]), active: "active", minimumImprovement: 0.1)?.id == "candidate")
+        #expect(singleModelCandidate(samples: window([2, 2]), active: "active", minimumImprovement: 0.1) == nil)
+        #expect(singleModelCandidate(samples: window([2, 0.5, 2]), active: "active", minimumImprovement: 0.1) == nil)
+        #expect(singleModelCandidate(samples: window([1.05, 1.05, 1.05]), active: "active", minimumImprovement: 0.1) == nil)
+        #expect(singleModelCandidate(samples: window([2, 2, 2]), active: "active", minimumImprovement: 0.1)?.id == "candidate")
         let weighted = AutopilotRanking.weighted(window([2, 3, 4])).first!
         #expect(abs(weighted.hourlyProfit - 20.0 / 6) < 0.00001)
     }
 
     @Test func staleRapidOrMissingSamplesCannotTriggerSwitches() {
-        #expect(AutopilotRanking.switchCandidate(samples: window([2, 2, 2], gap: 120), active: "active", minimumImprovement: 0.1) == nil)
-        #expect(AutopilotRanking.switchCandidate(samples: window([2, 2, 2], gap: 1), active: "active", minimumImprovement: 0.1) == nil)
+        #expect(singleModelCandidate(samples: window([2, 2, 2], gap: 120), active: "active", minimumImprovement: 0.1) == nil)
+        #expect(singleModelCandidate(samples: window([2, 2, 2], gap: 1), active: "active", minimumImprovement: 0.1) == nil)
         var samples = window([2, 2, 2])
         samples[1] = .init(date: samples[1].date, ranks: [rank("candidate", 2)])
-        #expect(AutopilotRanking.switchCandidate(samples: samples, active: "active", minimumImprovement: 0.1) == nil)
-        #expect(AutopilotRanking.switchCandidate(samples: window([2, 2, 2]), active: "unknown", minimumImprovement: 0.1) == nil)
+        #expect(singleModelCandidate(samples: samples, active: "active", minimumImprovement: 0.1) == nil)
+        #expect(singleModelCandidate(samples: window([2, 2, 2]), active: "unknown", minimumImprovement: 0.1) == nil)
     }
 
     private func report(_ id: String) -> String {
@@ -211,6 +392,186 @@ struct AutopilotTests {
         #expect(try AutopilotCLI.benchmarkConfiguration("[backend]") == "[backend]\nenabled_models = []")
         #expect(try AutopilotCLI.benchmarkConfiguration("[backend]\nmodel = 'x'\n").contains("enabled_models = []\nmodel = 'x'"))
         #expect(throws: (any Error).self) { try AutopilotCLI.benchmarkConfiguration("[backend]\nenabled_models = [ 'x'") }
+    }
+
+    @Test func calibrationStartsAndWarmsThreeModelsAndPersistsLimits() async throws {
+        let fixture = Harness(models: try [model("fast", price: "0.000004"), model("slow", price: "0.000003"),
+            model("third", price: "0.000002"), model("fourth")], report: report)
+        fixture.modelMemoryGB = Dictionary(uniqueKeysWithValues: fixture.models.map { ($0.id, 4) })
+        fixture.loadedModels = []
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("autopilot.json")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let controller = AutopilotController(storageURL: url, services: fixture.services)
+        #expect(controller.loadingLimits == .init(maximumMemoryGB: 16))
+        controller.updateLoadingLimits(.init(maximumModelCount: 3, maximumMemoryGB: 12))
+        controller.enable()
+        try await waitForEvaluation(controller)
+        #expect(fixture.commands.filter { $0.first == "start" } == [["start", "--model", "fast", "--model", "slow", "--model", "third"]])
+        #expect(controller.activeModels == ["fast", "slow", "third"])
+        #expect(controller.bestModels == ["fast", "slow", "third"])
+        #expect(controller.selectedMemoryGB == 12)
+        #expect(fixture.warmCalls == ["fast", "slow", "third"])
+        #expect(controller.saved.pendingChange == nil)
+        controller.updateLoadingLimits(.init(maximumModelCount: 1, maximumMemoryGB: 1))
+        #expect(controller.loadingLimits == .init(maximumModelCount: 3, maximumMemoryGB: 12))
+        try await controller.evaluate()
+        #expect(fixture.warmCalls.count == 3) // Already resident.
+        await controller.pauseAndWait()
+        let restored = AutopilotController(storageURL: url, services: fixture.services)
+        #expect(restored.loadingLimits == .init(maximumModelCount: 3, maximumMemoryGB: 12))
+        #expect(restored.benchmarks.count == 4)
+    }
+
+    @Test func emptyBudgetDoesNotStopInferenceOrLoadOversizedModels() async throws {
+        let fixture = Harness(models: try [model("fast")], report: report)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("autopilot.json")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let controller = AutopilotController(storageURL: url, services: fixture.services)
+        controller.updateLoadingLimits(.init(maximumMemoryGB: 1))
+        controller.enable()
+        try await waitForEvaluation(controller)
+        #expect(controller.isEnabled)
+        #expect(controller.lastError != nil)
+        #expect(!fixture.commands.contains { ["stop", "benchmark", "start", "switch"].contains($0[0]) })
+        #expect(controller.eligibilityExclusions["fast"]?.contains("maximum memory threshold") == true)
+        await controller.pauseAndWait()
+    }
+
+    @Test func threeStableSamplesExpandTheSelectionAndRetryMissingWarmModels() async throws {
+        let fixture = Harness(models: try [model("fast", price: "0.000003"), model("slow")], report: report)
+        fixture.modelMemoryGB = ["fast": 4, "slow": 4]
+        fixture.active = ["fast"]
+        fixture.loadedModels = ["fast"]
+        fixture.failWarmups = true
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("autopilot.json")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let controller = try calibratedController(fixture, url: url)
+        controller.enable()
+        try await waitForEvaluation(controller)
+        let first = try #require(controller.lastEvaluation)
+        try await controller.evaluate(now: first.addingTimeInterval(60))
+        #expect(!fixture.commands.contains { $0.first == "switch" })
+        try await controller.evaluate(now: first.addingTimeInterval(120))
+        #expect(fixture.commands.filter { $0.first == "switch" } == [["switch", "--model", "fast", "--model", "slow"]])
+        #expect(controller.saved.pendingChange == nil)
+        #expect(controller.lastError?.contains("Warmup unavailable") == true)
+        #expect(controller.isEnabled)
+        fixture.failWarmups = false
+        try await controller.evaluate(now: first.addingTimeInterval(180))
+        #expect(fixture.warmCalls == ["slow", "slow"])
+        #expect(controller.lastError == nil)
+        await controller.pauseAndWait()
+    }
+
+    @Test func multiModelPendingRecoveryKeepsTheFullSetAndConfirmsInAnyOrder() async throws {
+        let fixture = Harness(models: try [model("fast"), model("slow")], report: report)
+        fixture.modelMemoryGB = ["fast": 4, "slow": 4]
+        fixture.active = ["fast"]
+        fixture.switchSelection = ["fast", "slow"]
+        fixture.switchOutcome = "draining"
+        fixture.lifecycleOutcome = "draining"
+        fixture.failSwitch = true
+        fixture.switchError = "A provider model switch is already in progress"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("autopilot.json")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let pending = AutopilotPendingChange(model: "slow", models: ["slow", "fast"], start: false,
+            reason: "Earlier set", lastAttempt: .now.addingTimeInterval(-61))
+        let controller = try calibratedController(fixture, url: url, pending: pending)
+        controller.enable()
+        try await waitForEvaluation(controller)
+        #expect(fixture.commands.contains(["switch", "--model", "slow", "--model", "fast"]))
+        #expect(fixture.commands.contains(["start", "--model", "slow", "--model", "fast", "--timeout", "0", "--force"]))
+        let restored = AutopilotController(storageURL: url, services: fixture.services)
+        #expect(restored.saved.pendingChange?.selection == ["slow", "fast"])
+        try await controller.evaluate()
+        #expect(controller.activeModels == ["fast", "slow"])
+        #expect(controller.saved.pendingChange == nil)
+        #expect(controller.events.contains { $0.title == "Forced recovery completed" && $0.modelIDs == ["slow", "fast"] })
+        await controller.pauseAndWait()
+    }
+
+    @Test func loweringLimitsStopsAnOverBudgetSelectionWhenNothingFits() async throws {
+        let fixture = Harness(models: try [model("fast")], report: report)
+        fixture.active = ["fast"]
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("autopilot.json")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let controller = try calibratedController(fixture, url: url)
+        controller.updateLoadingLimits(.init(maximumMemoryGB: 1))
+        controller.enable()
+        try await waitForEvaluation(controller)
+        let first = try #require(controller.lastEvaluation)
+        try await controller.evaluate(now: first.addingTimeInterval(60))
+        #expect(!fixture.commands.contains(["stop"]))
+        try await controller.evaluate(now: first.addingTimeInterval(120))
+        #expect(fixture.commands.filter { $0.first == "stop" } == [["stop"]])
+        #expect(fixture.active.isEmpty)
+        #expect(controller.saved.pendingChange == nil)
+        #expect(controller.isEnabled)
+        #expect(!fixture.commands.contains { ["start", "switch"].contains($0[0]) })
+        await controller.pauseAndWait()
+    }
+
+    @Test func uncertainBudgetStopSurvivesRelaunchAndNeverForcesAModelStart() async throws {
+        let fixture = Harness(models: try [model("fast")], report: report)
+        fixture.active = ["fast"]
+        fixture.lifecycleOutcome = "draining"
+        fixture.failStop = true
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("autopilot.json")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let pending = AutopilotPendingChange(model: "", models: [], start: false, reason: "Memory budget",
+            lastAttempt: .now.addingTimeInterval(-61))
+        let controller = try calibratedController(fixture, url: url, pending: pending)
+        controller.enable()
+        try await waitForEvaluation(controller)
+        #expect(fixture.commands.filter { $0.first == "stop" }.count == 1)
+        #expect(controller.saved.pendingChange?.selection == [])
+        #expect(controller.events.contains { $0.title == "Stop outcome uncertain" })
+        await controller.pauseAndWait()
+        let restored = AutopilotController(storageURL: url, services: fixture.services)
+        restored.enable()
+        try await waitForEvaluation(restored)
+        #expect(fixture.commands.filter { $0.first == "stop" }.count == 1)
+        let attempt = try #require(restored.saved.pendingChange?.lastAttempt)
+        fixture.failStop = false
+        try await restored.evaluate(now: attempt.addingTimeInterval(1801))
+        #expect(fixture.commands.filter { $0.first == "stop" }.count == 2)
+        #expect(!fixture.commands.contains { $0.first == "start" || $0.contains("--force") })
+        try await restored.evaluate(now: attempt.addingTimeInterval(1802))
+        #expect(restored.saved.pendingChange == nil)
+        #expect(restored.isEnabled)
+        await restored.pauseAndWait()
+    }
+
+    @Test func warmupUsesExplicitNetworkAliasAndPausePreventsMoreWarmups() async throws {
+        let artifact = "gemma-4-26b-qat-4bit"
+        let fixture = Harness(models: try [model("gemma-4-26b", artifactID: artifact), model("slow")], report: report)
+        fixture.active = [artifact, "slow"]
+        fixture.extraLocalIDs = [artifact]
+        fixture.catalogIDs = [artifact, "slow"]
+        fixture.modelMemoryGB = [artifact: 4, "slow": 4]
+        fixture.loadedModels = []
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("autopilot.json")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        var services = fixture.services
+        var warmed: [String] = []
+        _ = try calibratedController(fixture, url: url)
+        var running: AutopilotController?
+        services.warmModel = { id in warmed.append(id); running?.pause() }
+        let runner = AutopilotController(storageURL: url, services: services)
+        running = runner
+        runner.enable()
+        for _ in 0..<100 where !runner.canEnable { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(warmed == ["gemma-4-26b"])
+        #expect(!runner.isEnabled)
+        #expect(!fixture.commands.contains { ["switch", "start"].contains($0[0]) })
+        await runner.pauseAndWait()
+    }
+
+    @Test func legacyPendingSelectionStillDecodes() throws {
+        let pending = try JSONDecoder().decode(AutopilotPendingChange.self,
+            from: Data(#"{"model":"fast","start":false,"reason":"Legacy"}"#.utf8))
+        #expect(pending.selection == ["fast"])
+        #expect(AutopilotRecovery.command(for: pending) == ["switch", "--model", "fast"])
     }
 
     @Test func thirdSampleSwitchesWithoutRestartAndTimeoutKeepsMonitoring() async throws {
@@ -412,7 +773,7 @@ struct AutopilotTests {
     }
 
     @Test(arguments: [false, true], [false, true])
-    func multipleReportedModelsStillSwitchToSingleWinner(winnerAlreadySelected: Bool, reportsAdvertisedSelection: Bool) async throws {
+    func multipleReportedModelsReduceToBestSetWithinMemoryBudget(winnerAlreadySelected: Bool, reportsAdvertisedSelection: Bool) async throws {
         let fixture = Harness(models: try [model("fast", price: "0.000003"), model("slow"), model("extra")], report: report)
         // The current model is slow, while sorting the reported IDs puts another model first.
         fixture.active = winnerAlreadySelected ? ["slow", "fast"] : ["slow", "extra"]
@@ -436,7 +797,7 @@ struct AutopilotTests {
         #expect(controller.saved.pendingChange == nil)
         #expect(controller.isEnabled)
         #expect(controller.lastError == nil)
-        #expect(controller.events.contains { $0.title == "Model switched" && $0.detail.contains("current slow:") })
+        #expect(controller.events.contains { $0.title == "Model switched" && $0.detail.contains("count and memory limits take precedence") })
         #expect(!fixture.commands.contains { ["stop", "benchmark", "start"].contains($0[0]) })
         try await controller.evaluate(now: first.addingTimeInterval(180))
         #expect(fixture.commands.filter { $0.first == "switch" }.count == 1)
@@ -879,6 +1240,10 @@ struct AutopilotTests {
         var version = "test-version"
         var networkCalls = 0
         var extraLocalIDs: [String] = []
+        var modelMemoryGB: [String: Double] = [:]
+        var loadedModels: [String]?
+        var warmCalls: [String] = []
+        var failWarmups = false
         var catalogIDs: [String]?
         var failCatalog = false
         var active = ["original"]
@@ -919,7 +1284,7 @@ struct AutopilotTests {
                         }.joined(separator: ",") + "]"
                     }
                     return "{\"models\":[" + (self.models.map(\.id) + self.extraLocalIDs).map {
-                        "{\"id\":\"\($0)\",\"estimated_memory_gb\":10,\"size_bytes\":100,\"template_render_ok\":true}"
+                        "{\"id\":\"\($0)\",\"estimated_memory_gb\":\(self.modelMemoryGB[$0] ?? 10),\"size_bytes\":100,\"template_render_ok\":true}"
                     }.joined(separator: ",") + "]}"
                 case "stop":
                     if self.failStop { throw AutopilotError.message("Drain timed out") }
@@ -947,21 +1312,25 @@ struct AutopilotTests {
                 if self.failNetwork || (self.failNetworkAfterPreflight && self.networkCalls > 1) {
                     throw AutopilotError.message("Network unavailable")
                 }
-                return (self.models, self.models.map { .init(id: $0.id, canAccept: true, routableProviders: 1,
-                    warmProviders: 1, activeRequests: 3, queuedRequests: 0, queueLimit: 8, aggregateTps: 100) })
+                return (self.models, self.models.map { .init(id: $0.id, canAccept: true, routableProviders: 10,
+                    warmProviders: 10, activeRequests: 3, queuedRequests: 0, queueLimit: 8, aggregateTps: 20) })
             }, daemon: {
                 if self.failDaemon { throw AutopilotError.message("Snapshot unavailable") }
                 guard let model = self.active.first else { return nil }
                 return DarkbloomDaemonState(writtenAt: .now,
                     capacity: .init(gpuMemoryActiveGb: 10, gpuMemoryCacheGb: 0, totalMemoryGb: 32), schema: 1,
                     currentModel: model, trust: .init(status: "online", receivedAt: .now, reason: "", trustLevel: "hardware"),
-                    pid: self.processID, version: "test-version", slots: self.active.map { .init(kvBackendRequested: "auto", mtpEnabled: false, kvBackend: "contiguous", mtpActive: false, model: $0) },
-                    warmModels: self.active, startedAt: .now, processIdentity: .init(pid: self.processID, startTimeMicros: Int64(self.processID)),
+                    pid: self.processID, version: "test-version", slots: (self.loadedModels ?? self.active).map { .init(kvBackendRequested: "auto", mtpEnabled: false, kvBackend: "contiguous", mtpActive: false, model: $0) },
+                    warmModels: self.loadedModels ?? self.active, startedAt: .now, processIdentity: .init(pid: self.processID, startTimeMicros: Int64(self.processID)),
                     stats: .init(usageGaps: 0, tokensGenerated: 0, requestsServed: 0), inferenceActive: true, attestationPublicKey: nil,
                     advertisedModels: self.reportsAdvertisedSelection ? (self.advertisedSelection ?? self.active) : nil,
                     modelSwitch: self.switchOutcome.map { .init(outcome: $0, models: self.switchSelection ?? self.advertisedSelection ?? self.active) },
                     lifecycle: .init(outcome: self.lifecycleOutcome))
-            }, memoryGB: 32, machineID: "fixture", evaluationInterval: evaluationInterval)
+            }, memoryGB: 32, machineID: "fixture", evaluationInterval: evaluationInterval, warmModel: { model in
+                self.warmCalls.append(model)
+                if self.failWarmups { throw AutopilotError.message("Warmup unavailable") }
+                self.loadedModels = (self.loadedModels ?? []) + [model]
+            })
         }
     }
     #endif

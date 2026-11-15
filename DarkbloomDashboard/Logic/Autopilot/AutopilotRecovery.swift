@@ -18,11 +18,12 @@ enum AutopilotRecovery {
     }
 
     static func command(for pending: AutopilotPendingChange) -> [String] {
+        if pending.selection.isEmpty { return ["stop"] }
         if pending.forceRestart == true {
             // restart preserves the old selection; start explicitly replaces it.
-            return ["start", "--model", pending.model, "--timeout", "0", "--force"]
+            return ["start"] + pending.selection.flatMap { ["--model", $0] } + ["--timeout", "0", "--force"]
         }
-        return [pending.start ? "start" : "switch", "--model", pending.model]
+        return [pending.start ? "start" : "switch"] + pending.selection.flatMap { ["--model", $0] }
     }
 }
 #endif

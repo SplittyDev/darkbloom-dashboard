@@ -123,6 +123,7 @@ struct AutopilotServices {
     var memoryGB: Double
     var machineID: String
     var evaluationInterval: TimeInterval = 60
+    var warmModel: (String) async throws -> Void = { _ in }
 
     static var live: Self {
         Self(command: { arguments in
@@ -156,7 +157,14 @@ struct AutopilotServices {
             }
             return state
         }, memoryGB: Double(ProcessInfo.processInfo.physicalMemory) / pow(1024, 3),
-             machineID: LocalServiceController.shared.currentMachineSerialNumber ?? Host.current().localizedName ?? "local")
+             machineID: LocalServiceController.shared.currentMachineSerialNumber ?? Host.current().localizedName ?? "local",
+             warmModel: { model in
+                 guard let key = Settings.shared.apiKey, !key.isEmpty,
+                       let serial = LocalServiceController.shared.currentMachineSerialNumber else {
+                     throw AutopilotError.message("Cannot warm the Autopilot selection without an API key and local machine serial.")
+                 }
+                 try await DarkbloomClient(apiKey: key).warmupMachine(serialNumber: serial, models: [model], maxTokens: 1)
+             })
     }
 }
 #endif

@@ -31,6 +31,9 @@ struct AutopilotEvent: Codable, Identifiable {
 
 struct AutopilotPendingChange: Codable {
     let model: String
+    var models: [String]? = nil
+    var selection: [String] { models ?? [model] }
+    var selectionDescription: String { selection.isEmpty ? "no models" : selection.joined(separator: ", ") }
     var start: Bool
     let reason: String
     var lastAttempt: Date?
@@ -48,6 +51,7 @@ struct AutopilotSavedState: Codable {
     var calibratedAt: Date?
     var recoveryModels: [String]?
     var economics = AutopilotEconomics()
+    var loadingLimits: AutopilotLoadingLimits?
     var events: [AutopilotEvent] = []
     var pendingChange: AutopilotPendingChange?
     var awaitingInitialSelection: Bool?
@@ -83,7 +87,19 @@ final class AutopilotController {
     var events: [AutopilotEvent] {
         saved.events.filter { event in event.modelIDs.allSatisfy { catalogModelIDs.contains($0) } }
     }
-    var bestModel: String? { rankings.first?.id }
+    var bestModels: [String] { selectedRanks.map(\.id) }
+    private var selectedRanks: [AutopilotRank] {
+        AutopilotRanking.selection(ranks: rankings, local: localModels, limits: loadingLimits, memoryGB: memoryGB, economics: economics)
+    }
+    var bestSetEstimate: AutopilotSetEstimate {
+        AutopilotRanking.estimate(selectedRanks, economics: economics)
+    }
+    var loadingLimits: AutopilotLoadingLimits {
+        (saved.loadingLimits ?? .init()).normalized(memoryGB: memoryGB)
+    }
+    var selectedMemoryGB: Double {
+        bestModels.reduce(0) { total, id in total + (localModels.first { $0.id == id }?.estimatedMemoryGb ?? 0) }
+    }
     var economics: AutopilotEconomics { saved.economics }
     var memoryGB: Double { services.memoryGB }
     var canEnable: Bool { task == nil }
@@ -102,13 +118,22 @@ final class AutopilotController {
             lastError = "Inference may still be stopped from calibration. Enable Autopilot to finish calibration and start serving."
         }
         if let pending = saved.pendingChange {
-            status = "Confirmation pending for \(pending.model) — enable to resume checking"
+            status = "Confirmation pending for \(pending.selectionDescription) — enable to resume checking"
         }
     }
 
     func updateEconomics(_ value: AutopilotEconomics) {
         guard !isEnabled, !isBusy else { return }
         saved.economics = value
+        samples = []
+        rankings = []
+        consecutiveSamples = 0
+        persist()
+    }
+
+    func updateLoadingLimits(_ value: AutopilotLoadingLimits) {
+        guard !isEnabled, !isBusy, task == nil, saved.pendingChange == nil else { return }
+        saved.loadingLimits = value.normalized(memoryGB: memoryGB)
         samples = []
         rankings = []
         consecutiveSamples = 0
@@ -157,7 +182,7 @@ final class AutopilotController {
                 }
                 guard isEnabled else { break }
                 if let pending = saved.pendingChange {
-                    status = "Waiting for \(pending.model) confirmation — checking automatically"
+                    status = "Waiting for \(pending.selectionDescription) confirmation — checking automatically"
                 } else if lastError != nil {
                     status = "Waiting to retry automatically"
                 } else {
@@ -214,6 +239,11 @@ final class AutopilotController {
         catalogModelIDs = Set(catalog.map(\.id))
         localModels = local.filter { catalogModelIDs.contains($0.id) }
         eligibilityExclusions = AutopilotCatalogModel.exclusions(local: localModels, catalog: catalog, memoryGB: services.memoryGB)
+        for model in localModels where eligibilityExclusions[model.id] == nil {
+            if let memory = model.estimatedMemoryGb, memory > loadingLimits.maximumMemoryGB! {
+                eligibilityExclusions[model.id] = "Exceeds the maximum memory threshold (\(loadingLimits.maximumMemoryGB!.formatted()) GB)"
+            }
+        }
         rankingExclusions = eligibilityExclusions
     }
 
@@ -349,15 +379,18 @@ final class AutopilotController {
     }
 
     private func initialSelection() async throws {
-        status = "Choosing the initial model"
+        status = "Choosing the initial models"
         rankings = try await freshRanks()
         lastEvaluation = .now
-        guard let best = rankings.first else { throw AutopilotError.message("No calibrated local model has current network pricing and capacity data.") }
+        let selection = selectedRanks
+        guard !selection.isEmpty else {
+            throw AutopilotError.message("No calibrated model with current network data fits the maximum memory threshold. Pause and increase the threshold or recalibrate eligible downloads.")
+        }
         guard isEnabled else { await restoreAfterCalibration(); return }
-        let reason = "Initial ranking: \(describe(best)). One pass is used after calibration or an explicit resume with inference stopped."
+        let reason = "Initial ranking: \(selection.map(describe).joined(separator: "; ")). One pass is used after calibration or an explicit resume with inference stopped."
         // Once start is submitted, a timeout has an uncertain outcome. Avoid a competing restore.
         canRestoreCalibration = false
-        try await changeModel(best.id, start: true, reason: reason)
+        try await changeModels(selection.map(\.id), start: true, reason: reason)
         samples = []
         consecutiveSamples = 0
     }
@@ -401,52 +434,61 @@ final class AutopilotController {
         if let previous = samples.last, now.timeIntervalSince(previous.date) > 90 { samples = [] }
         samples.append(AutopilotSample(date: now, ranks: ranks))
         samples = Array(samples.suffix(3))
-        rankings = AutopilotRanking.weighted(samples)
+        rankings = AutopilotRanking.weighted(samples, economics: economics)
         for rank in ranks where !rankings.contains(where: { $0.id == rank.id }) {
             rankingExclusions[rank.id] = "Waiting for a complete window of consecutive samples"
         }
         lastEvaluation = now
         lastError = nil
-        let winner = rankings.first?.id
-        consecutiveSamples = samples.reversed().prefix(while: { $0.ranks.first?.id == winner && winner != nil }).count
+        let winner = Set(bestModels)
+        consecutiveSamples = samples.reversed().prefix(while: {
+            Set(AutopilotRanking.selection(ranks: $0.ranks, local: localModels,
+                limits: loadingLimits, memoryGB: memoryGB, economics: economics).map(\.id)) == winner
+        }).count
         guard isEnabled else { return }
-        let active: String?
-        if observed.count == 1 {
-            // Advertised selection is authoritative even while loaded slots lag.
-            active = observed.first
-        } else if let current = state?.currentModel, observed.contains(current) {
-            // Several reported models still share one active inference model.
-            active = current
-        } else {
-            // A lazy snapshot may have no current model. Compare against the best
-            // measured selection rather than choosing an arbitrary model by name.
-            active = rankings.first(where: { observed.contains($0.id) })?.id
+        if winner.isEmpty, AutopilotRanking.selectionExceedsLimits(observed, local: localModels,
+                limits: loadingLimits, memoryGB: memoryGB), samples.count == 3, consecutiveSamples == 3,
+           zip(samples, samples.dropFirst()).allSatisfy({ (55...90).contains($0.1.date.timeIntervalSince($0.0.date)) }) {
+            try await changeModels([], start: false, reason: "No calibrated model fits the configured memory threshold across three consecutive samples.")
+            return
         }
-        guard let active, let candidate = AutopilotRanking.switchCandidate(samples: samples, active: active,
-                                                               minimumImprovement: saved.economics.minimumImprovement) else { return }
-        let current = rankings.first(where: { $0.id == active })!
-        let reason = "Three consecutive samples agree (weights 1:2:3). \(describe(candidate)); current \(active): \(money(current.hourlyProfit))/h. Improvement exceeds \(Int(saved.economics.minimumImprovement * 100))% and $0.001/h."
-        try await changeModel(candidate.id, start: false, reason: reason)
+        guard let candidate = AutopilotRanking.switchSelection(samples: samples, active: observed,
+                local: localModels, limits: loadingLimits, memoryGB: memoryGB,
+                minimumImprovement: saved.economics.minimumImprovement, economics: economics) else {
+            try await warmSelection(state: state)
+            return
+        }
+        let estimate = AutopilotRanking.estimate(candidate, economics: economics)
+        let reason = "Three consecutive samples agree (weights 1:2:3). \(candidate.map(describe).joined(separator: "; ")). Shared estimate: \(money(estimate.hourlyProfit))/h net, \(estimate.utilization.formatted(.percent)) busy, \(estimate.averageWatts.formatted()) W average. Set replacements exceed the configured improvement margin; count and memory limits take precedence."
+        try await changeModels(candidate.map(\.id), start: false, reason: reason)
         samples = []
         consecutiveSamples = 0
     }
 
-    private func changeModel(_ model: String, start: Bool, reason: String) async throws {
+    private func changeModels(_ models: [String], start: Bool, reason: String) async throws {
         guard isEnabled, saved.pendingChange == nil else { return }
-        let pending = AutopilotPendingChange(model: model, start: start, reason: reason,
+        let model = models.first ?? ""
+        let selection = models.joined(separator: ", ")
+        let pending = AutopilotPendingChange(model: model, models: models, start: start, reason: reason,
                                              lastAttempt: .now, firstAttempt: .now)
         saved.pendingChange = pending
         settledPendingSelection = nil
         // Persist before submitting: even a CLI error can have an uncertain outcome.
         do { try save() }
         catch { saved.pendingChange = nil; throw error }
-        status = start ? "Starting \(model)" : "Switching to \(model)"
-        record(start ? "Start requested" : "Switch requested", "\(activeModels.joined(separator: ", ")) → \(model). \(reason)")
+        if models.isEmpty {
+            status = "Stopping inference to meet the memory threshold"
+            record("Inference stop requested", reason)
+        } else {
+            status = start ? "Starting \(selection)" : "Switching to \(selection)"
+            record(start ? "Start requested" : "Switch requested", "\(activeModels.joined(separator: ", ")) → \(selection). \(reason)")
+        }
         await submitPendingChange(pending)
         do { try await reconcilePendingChange() }
         catch {
-            lastError = error.localizedDescription + " Autopilot will retry confirmation automatically."
-            status = "Waiting for \(model) confirmation — checking automatically"
+            lastError = error.localizedDescription + (saved.pendingChange == nil
+                ? " Autopilot will retry missing warm models automatically."
+                : " Autopilot will retry confirmation automatically.")
         }
     }
 
@@ -455,7 +497,7 @@ final class AutopilotController {
         do {
             _ = try await services.command(AutopilotRecovery.command(for: pending))
         } catch {
-            if !pending.start, pending.forceRestart != true {
+            if !pending.selection.isEmpty, !pending.start, pending.forceRestart != true {
                 var updated = saved.pendingChange ?? pending
                 if AutopilotRecovery.switchTimedOut(error) {
                     updated.switchTimeouts = (updated.switchTimeouts ?? 0) + 1
@@ -468,12 +510,13 @@ final class AutopilotController {
                 }
             }
             lastError = error.localizedDescription + " Autopilot will keep checking the daemon before issuing another change."
-            record("Command outcome uncertain", "\(pending.model): \(lastError!)")
+            record(pending.selection.isEmpty ? "Stop outcome uncertain" : "Command outcome uncertain",
+                   "\(pending.selectionDescription): \(lastError!)")
         }
     }
 
     private func forceRestart(_ pending: AutopilotPendingChange, reason: String, now: Date = .now) async {
-        guard isEnabled else { return }
+        guard isEnabled, !pending.selection.isEmpty else { return }
         let previousState = try? await services.daemon()
         guard isEnabled else { return }
         var recovery = pending
@@ -493,8 +536,8 @@ final class AutopilotController {
         settledPendingSelection = nil
         samples = []
         consecutiveSamples = 0
-        status = "Force-restarting provider with \(pending.model)"
-        record("Forced recovery requested", "\(pending.model): \(reason)")
+        status = "Force-restarting provider with \(pending.selectionDescription)"
+        record("Forced recovery requested", "\(pending.selectionDescription): \(reason)")
         // The previous CLI call has returned, releasing our lifecycle lease.
         // This path never recursively escalates another failed forced command.
         await submitPendingChange(recovery)
@@ -509,11 +552,12 @@ final class AutopilotController {
             saved.pendingChange = pending
             try save()
         }
-        status = "Waiting for \(pending.model) confirmation — checking automatically"
+        status = "Waiting for \(pending.selectionDescription) confirmation — checking automatically"
         let state: DarkbloomDaemonState?
         do { state = try await services.daemon() }
         catch {
             settledPendingSelection = nil
+            if pending.selection.isEmpty { throw error }
             let deadline = pending.forceRestart == true ? AutopilotRecovery.restartConfirmationInterval : AutopilotRecovery.maximumUnconfirmedInterval
             let since = pending.forceRestart == true ? pending.lastAttempt : (pending.firstAttempt ?? pending.lastAttempt)
             if now.timeIntervalSince(since ?? now) >= deadline {
@@ -528,7 +572,7 @@ final class AutopilotController {
         let switchInProgress = state?.modelSwitch.map { !["serving", "switched"].contains($0.outcome) } ?? false
         let sameProcess = pending.replacedPID != nil && state?.processIdentity.pid == pending.replacedPID &&
             state?.processIdentity.startTimeMicros == pending.replacedStartTimeMicros
-        let confirmed = observed == [pending.model] && !transitioning && !switchInProgress &&
+        let confirmed = (pending.selection.isEmpty ? state == nil : Set(observed) == Set(pending.selection)) && !transitioning && !switchInProgress &&
             (pending.forceRestart != true || !sameProcess)
         if !confirmed, pending.forceRestart == true {
             if now.timeIntervalSince(pending.lastAttempt ?? now) >= AutopilotRecovery.restartConfirmationInterval {
@@ -536,18 +580,19 @@ final class AutopilotController {
             }
             return
         }
-        if !confirmed, now.timeIntervalSince(pending.firstAttempt ?? pending.lastAttempt ?? now) >= AutopilotRecovery.maximumUnconfirmedInterval {
+        if !confirmed, !pending.selection.isEmpty, now.timeIntervalSince(pending.firstAttempt ?? pending.lastAttempt ?? now) >= AutopilotRecovery.maximumUnconfirmedInterval {
             await forceRestart(pending, reason: "Model change has remained unconfirmed for 30 minutes.", now: now)
             return
         }
         // Probe the same target after our previous command has returned. A terminal
         // drain can reconcile gracefully; a wedged daemon rejects the probe as busy,
         // which escalates to forced replacement in submitPendingChange.
-        let retrySwitch = !pending.start && state?.modelSwitch?.models == [pending.model] &&
+        let retrySwitch = !pending.start && state?.modelSwitch.map { Set($0.models) == Set(pending.selection) } == true &&
             (["timedOut", "validating", "draining", "switching"].contains(state?.modelSwitch?.outcome ?? "") ||
-             (state?.modelSwitch?.outcome == "failed" && observed == [pending.model]))
+             (state?.modelSwitch?.outcome == "failed" && Set(observed) == Set(pending.selection)))
         let retryStart = state == nil
-        if !confirmed, (retrySwitch || retryStart), isEnabled,
+        let retryStop = pending.selection.isEmpty && state?.lifecycle?.outcome == "draining"
+        if !confirmed, (retrySwitch || retryStart || retryStop), isEnabled,
            now.timeIntervalSince(pending.lastAttempt ?? .distantPast) >= AutopilotRecovery.retryInterval {
             var retry = pending
             retry.start = pending.start || retryStart
@@ -557,13 +602,16 @@ final class AutopilotController {
             do { try save() }
             catch { saved.pendingChange = pending; throw error }
             settledPendingSelection = nil
-            record("Retrying model change", "\(pending.model): retrying after the previous command ended without confirmed service.")
+            record(pending.selection.isEmpty ? "Retrying inference stop" : "Retrying model change",
+                   "\(pending.selectionDescription): retrying after the previous command ended without confirmed service.")
             await submitPendingChange(retry)
             return
         }
         // An advertised selection is authoritative. Legacy snapshots retain the
         // loaded-model fallback, but known lifecycle transitions must finish first.
         if !confirmed {
+            // An uncertain stop must be confirmed before any new load can compete.
+            if pending.selection.isEmpty { return }
             // A fresh, explicitly settled daemon serving another selection means the
             // command did not apply. Require two observations a minute apart before
             // allowing a new ranking window.
@@ -601,12 +649,40 @@ final class AutopilotController {
         lastError = nil
         status = "Monitoring"
         if confirmed {
-            if pending.forceRestart == true {
-                record("Forced recovery completed", "\(pending.model): the provider confirmed the intended selection after forced recovery.")
+            if pending.selection.isEmpty {
+                record("Inference stopped", pending.reason)
+                return
             }
-            record(pending.start ? "Model started" : "Model switched", "\(pending.model). \(pending.reason)")
+            if pending.forceRestart == true {
+                record("Forced recovery completed", "\(pending.selectionDescription): the provider confirmed the intended selection after forced recovery.")
+            }
+            record(pending.start ? "Model started" : "Model switched", "\(pending.selectionDescription). \(pending.reason)")
+            try await warmSelection(state: state)
         } else {
             record("Change not applied", "Daemon is serving \(observed.joined(separator: ", ")). Resuming fresh evaluations before retrying a model change.")
+        }
+    }
+
+    private func warmSelection(state: DarkbloomDaemonState?) async throws {
+        guard isEnabled, saved.pendingChange == nil, let state,
+              state.lifecycle == nil || state.selectionIsSettled,
+              activeModels.allSatisfy({ eligibilityExclusions[$0] == nil }),
+              AutopilotRanking.selectionFits(activeModels, local: localModels,
+                  limits: loadingLimits, memoryGB: memoryGB) else { return }
+        let loaded = Set(state.warmModels + state.slots.map(\.model))
+        let missing = activeModels.filter { !loaded.contains($0) }
+        guard !missing.isEmpty else { return }
+        let models = try await services.network().models
+        for model in missing {
+            guard isEnabled else { return }
+            // Warmup uses API model IDs; selection and memory accounting use artifact IDs.
+            let exact = models.filter { $0.id == model }
+            let matches = exact.isEmpty ? models.filter { $0.huggingFaceId == model } : exact
+            guard matches.count == 1, let route = matches.first else {
+                throw AutopilotError.message("Cannot resolve the network identity for warming \(model).")
+            }
+            status = "Warming \(model)"
+            try await services.warmModel(route.id)
         }
     }
 
@@ -633,7 +709,7 @@ final class AutopilotController {
     }
 
     private func describe(_ rank: AutopilotRank) -> String {
-        "\(rank.id): \(money(rank.hourlyProfit))/h estimated net potential, \(Int(rank.utilization * 100))% estimated utilization, \(rank.demand) requests / \(rank.competitors) providers, \(rank.effectiveTPS.formatted(.number.precision(.fractionLength(1)))) effective output tok/s"
+        "\(rank.id): \(money(rank.hourlyProfit))/h estimated standalone net, \(Int(rank.utilization * 100))% estimated busy time, \(rank.demand) requests / \(rank.competitors) providers, \(rank.effectiveTPS.formatted(.number.precision(.fractionLength(1)))) effective output tok/s"
     }
 
     private func money(_ value: Double) -> String { value.formatted(.currency(code: "USD").precision(.fractionLength(4))) }

@@ -73,7 +73,7 @@ final actor DarkbloomClient {
     
     // MARK: Helpers
     
-    func warmupMachine(serialNumber: String, models: [String]) async throws {
+    func warmupMachine(serialNumber: String, models: [String], maxTokens: Int? = nil) async throws {
         let ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15"
         for model in models {
             let url = HOST
@@ -86,25 +86,26 @@ final actor DarkbloomClient {
             req.setValue(ua, forHTTPHeaderField: "User-Agent")
             req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
             req.setValue("self", forHTTPHeaderField: "X-Darkbloom-Route")
-            req.httpBody = """
-            {
-                "model": "\(model)",
-                "messages": [
-                    { "role": "user", "content": "Hello" }
-                ],
+            var body: [String: Any] = [
+                "model": model,
+                "messages": [["role": "user", "content": "Hello"]],
                 "stream": false,
-                "provider_serial": "\(serialNumber)"
-            }
-            """.data(using: .utf8)
+                "provider_serial": serialNumber
+            ]
+            if let maxTokens { body["max_tokens"] = maxTokens }
+            req.httpBody = try JSONSerialization.data(withJSONObject: body)
             print("Warming up \(model) for \(serialNumber)...")
             let (data, res) = try await URLSession.shared.data(for: req)
             if let httpResponse = res as? HTTPURLResponse {
+                guard (200..<300).contains(httpResponse.statusCode) else {
+                    throw URLError(.badServerResponse, userInfo: [NSLocalizedDescriptionKey: "Model warmup failed (HTTP \(httpResponse.statusCode))."])
+                }
                 print("-> Response: HTTP \(httpResponse.statusCode)")
                 if let respSerial = httpResponse.value(forHTTPHeaderField: "x-provider-serial") {
                     print("-> SerialNo: \(respSerial) (matches: \(respSerial == serialNumber ? "true" : "false"))")
                 }
             } else {
-                print("-> Error: Response is not HTTP")
+                throw URLError(.badServerResponse)
             }
             let textData = String(data: data, encoding: .utf8)
             print("-> Data: \(textData ?? "<not utf8>")")

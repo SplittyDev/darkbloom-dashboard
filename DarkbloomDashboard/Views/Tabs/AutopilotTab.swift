@@ -17,8 +17,10 @@ struct AutopilotTab: View {
     var body: some View {
         Form {
             Section {
-                LabeledContent("Active Model", value: active)
-                LabeledContent("Best Model", value: controller.bestModel ?? "Awaiting calibration and fresh demand")
+                LabeledContent("Selected Models", value: active)
+                LabeledContent("Loaded / Warm Models", value: loaded)
+                LabeledContent("Best Model Set", value: controller.bestModels.isEmpty
+                    ? "Awaiting calibration and fresh demand" : controller.bestModels.joined(separator: ", "))
                 LabeledContent("Status") {
                     HStack {
                         Text(controller.status)
@@ -60,7 +62,7 @@ struct AutopilotTab: View {
             }
 
             Section("Decision Window") {
-                LabeledContent("Consecutive Winning Samples", value: "\(controller.consecutiveSamples) / 3")
+                LabeledContent("Consecutive Winning Set Samples", value: "\(controller.consecutiveSamples) / 3")
                 LabeledContent("Last / Next Evaluation") {
                     HStack {
                         if let date = controller.lastEvaluation {
@@ -82,13 +84,58 @@ struct AutopilotTab: View {
                 }
             }
 
-            Section("Earning Estimates") {
+            Section {
+                Picker("Maximum Loaded Model Count", selection: Binding(get: {
+                    controller.loadingLimits.maximumModelCount
+                }, set: { value in
+                    var limits = controller.loadingLimits
+                    limits.maximumModelCount = value
+                    controller.updateLoadingLimits(limits)
+                })) {
+                    ForEach(1...3, id: \.self) { Text("\($0)").tag($0) }
+                }
+                LabeledContent("Maximum Memory Threshold (GB)") {
+                    TextField("Maximum Memory Threshold", value: Binding(get: {
+                        controller.loadingLimits.maximumMemoryGB!
+                    }, set: { value in
+                        guard value.isFinite else { return }
+                        var limits = controller.loadingLimits
+                        limits.maximumMemoryGB = value
+                        controller.updateLoadingLimits(limits)
+                    }), format: .number)
+                    .labelsHidden()
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 100)
+                }
+                LabeledContent("Best Set Estimated Memory", value: "\(controller.selectedMemoryGB.formatted(.number.precision(.fractionLength(1)))) GB")
+            } header: {
+                Text("Model Loading")
+            }
+            .disabled(controller.isEnabled || !controller.canEnable || controller.saved.pendingChange != nil)
+
+            Section {
                 economicField("Electricity (USD/kWh)", keyPath: \.electricityPerKWh, format: .number, range: 0...100)
-                economicField("Serving Power (Watts)", keyPath: \.servingWatts, format: .number, range: 0...10000)
+                economicField("Active Serving Power (Watts)", keyPath: \.servingWatts, format: .number, range: 0...10000)
+                economicField("Idle Power (Watts)", keyPath: \.idlePowerInput, format: .number, range: 0...10000)
                 economicField("Minimum Improvement", keyPath: \.minimumImprovement, format: .percent, range: 0.01...10)
+            } header: {
+                Text("Power Assumptions")
             }
 
-            Section("Model Ranking") {
+            if !controller.bestModels.isEmpty {
+                Section("Best Set Estimates") {
+                    LabeledContent("Estimated Busy Time", value: controller.bestSetEstimate.utilization.formatted(.percent.precision(.fractionLength(0))))
+                    if let requests = controller.bestSetEstimate.handledRequestsPerHour {
+                        LabeledContent("Estimated Handled Requests /h", value: requests.formatted(.number.precision(.fractionLength(1))))
+                    }
+                    LabeledContent("Estimated Average Power", value: "\(controller.bestSetEstimate.averageWatts.formatted(.number.precision(.fractionLength(1)))) W")
+                    LabeledContent("Estimated Revenue /h", value: dollars(controller.bestSetEstimate.hourlyRevenue))
+                    LabeledContent("Estimated Electricity /h", value: dollars(controller.bestSetEstimate.hourlyCost))
+                    LabeledContent("Estimated Net /h", value: dollars(controller.bestSetEstimate.hourlyProfit))
+                }
+            }
+
+            Section {
                 if controller.rankings.isEmpty {
                     Text("No comparable samples yet.").foregroundStyle(.secondary)
                 }
@@ -96,18 +143,32 @@ struct AutopilotTab: View {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
                             Text(rank.id).fontWeight(.medium)
+                            if controller.bestModels.contains(rank.id) {
+                                Text("Recommended").font(.caption).foregroundStyle(.secondary)
+                            }
                             Spacer()
                             Text(rank.hourlyProfit, format: .currency(code: "USD").precision(.fractionLength(4))) + Text(" /h")
                         }
                         HStack {
-                            Text("Utilization \(rank.utilization.formatted(.percent.precision(.fractionLength(0))))")
+                            Text("Estimated busy \(rank.utilization.formatted(.percent.precision(.fractionLength(0))))")
                             Spacer()
                             Text("\(rank.effectiveTPS.formatted(.number.precision(.fractionLength(1)))) output tok/s")
                             Text("· \(rank.demand) requests / \(rank.competitors) providers")
                         }
                         .font(.caption).foregroundStyle(.secondary)
+                        if let requests = rank.handledRequestsPerHour, let offered = rank.offeredRequestsPerHour, let seconds = rank.requestSeconds,
+                           let prompt = rank.requestPromptTokens, let output = rank.requestCompletionTokens {
+                            Text("≈ \(offered.formatted(.number.precision(.fractionLength(1)))) offered / \(requests.formatted(.number.precision(.fractionLength(1)))) handled requests/h · \(seconds.formatted(.number.precision(.fractionLength(1))))s per request at benchmark size (\(Int(prompt)) prompt / \(Int(output)) output tokens)")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if !rank.usesFleetThroughput {
+                            Text("Fleet throughput unavailable — using occupancy as a rough busy-time estimate")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                 }
+            } header: {
+                Text("Model Ranking")
             }
 
             Section("Calibration") {
@@ -150,6 +211,18 @@ struct AutopilotTab: View {
         .task { await controller.refreshDisplay() }
     }
 
+    private func dollars(_ value: Double) -> String {
+        value.formatted(.currency(code: "USD").precision(.fractionLength(4)))
+    }
+
+    private var loaded: String {
+        if localService.processIsRunning == false { return "None" }
+        guard let state = localService.daemonState, localService.processIsRunning == true,
+              abs(state.writtenAt.timeIntervalSinceNow) < 30 else { return "Waiting for a fresh daemon snapshot" }
+        let models = Set(state.warmModels + state.slots.map(\.model)).sorted()
+        return models.isEmpty ? "None" : models.joined(separator: ", ")
+    }
+
     private func economicField<F: ParseableFormatStyle>(_ title: String, keyPath: WritableKeyPath<AutopilotEconomics, Double>,
                                format: F, range: ClosedRange<Double>) -> some View where F.FormatInput == Double, F.FormatOutput == String {
         LabeledContent(title) {
@@ -157,6 +230,8 @@ struct AutopilotTab: View {
                 guard value.isFinite else { return }
                 var economics = controller.economics
                 economics[keyPath: keyPath] = min(range.upperBound, max(range.lowerBound, value))
+                if keyPath == \.idlePowerInput { economics.idlePowerInput = min(economics.idlePowerInput, economics.servingWatts) }
+                if keyPath == \.servingWatts { economics.idlePowerInput = min(economics.idlePowerInput, economics.servingWatts) }
                 controller.updateEconomics(economics)
             }), format: format)
             .labelsHidden()
